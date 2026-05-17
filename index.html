@@ -3,16 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual Learning Journey</title>
+    <title>360° Learning Journey Builder</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
+        body { margin: 0; overflow-x: hidden; }
+        canvas { display: block; }
+        #viewerContainer { width: 100%; height: 600px; position: relative; background: #000; cursor: grab; }
+        #viewerContainer:active { cursor: grabbing; }
+        .edit-mode #viewerContainer { cursor: crosshair; }
+        
         @keyframes pulse-blue { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
-        @keyframes bounce-slow { 0%, 100% { transform: translateY(0) translateX(-50%); } 50% { transform: translateY(-10px) translateX(-50%); } }
-        .hotspot-marker { animation: pulse-blue 2s infinite; transition: transform 0.2s; }
+        .hotspot-marker { animation: pulse-blue 2s infinite; transition: transform 0.2s; pointer-events: auto; }
         .hotspot-marker:hover { transform: scale(1.1); }
-        .hotspot-marker.visited { background-color: #10b981; border-color: #fff; animation: none; }
-        .no-select { user-select: none; -webkit-user-select: none; }
-        .transit-animate { animation: bounce-slow 2s infinite; left: 50%; }
+        .visited { background-color: #10b981 !important; animation: none; }
         
         #floatingMenu { position: fixed; bottom: 30px; right: 30px; z-index: 50; touch-action: none; }
         .dragging { opacity: 0.8; cursor: grabbing !important; }
@@ -20,266 +25,1209 @@
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
 
-    <header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30 px-6 h-16 flex items-center">
-        <h2 id="currentSceneTitle" class="text-xl font-bold text-slate-800">Loading...</h2>
+    <header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600 p-2 rounded-lg text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
+                </div>
+                <h1 id="currentSceneTitleHeader" class="text-xl font-bold text-slate-800">360° Journey Builder</h1>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button id="toggleModeBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    Preview Mode
+                </button>
+                <button id="setupTransitBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+                    Transit Logic
+                </button>
+                <button id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-bold transition-colors text-sm flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Export App
+                </button>
+            </div>
+        </div>
     </header>
 
-    <main class="flex-grow p-6 flex flex-col items-center max-w-6xl mx-auto w-full relative pb-24">
-        
-        <div id="completionBanner" class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6 rounded-r-md w-full flex justify-between items-center text-yellow-800 shadow-sm hidden">
+    <main class="flex-grow p-6 flex flex-col items-center max-w-6xl mx-auto w-full relative">
+        <div id="statusBanner" class="bg-indigo-50 border-l-4 border-indigo-500 p-4 mb-6 rounded-r-md w-full flex justify-between items-center text-indigo-800">
             <div class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
-                <span class="font-bold">Journey Complete! You have successfully finished all scenes.</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                <span id="statusText">Add a scene in the menu to start building your 360° tour.</span>
             </div>
         </div>
 
-        <div class="relative w-full bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden" id="imageContainerWrapper">
-            <img id="mainImage" src="" class="w-full h-auto block no-select" draggable="false">
-            <div id="hotspotContainer" class="absolute top-0 left-0 w-full h-full pointer-events-auto"></div>
-            
-            <div id="transitBtnContainer" class="absolute bottom-8 transit-animate hidden z-40">
-                <button id="transitTriggerBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-full font-bold shadow-2xl flex items-center gap-2 transition-transform hover:scale-105 border-4 border-white">
-                    <span id="transitBtnText">Unlock Next Scene</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
-                </button>
+        <!-- NEW: Beautiful Welcome / Empty State Landing Page -->
+        <div id="welcomeSection" class="w-full max-w-xl mx-auto mt-12 bg-white rounded-2xl shadow-xl border border-slate-100 p-8 text-center transition-all">
+            <div class="bg-indigo-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 002 2h1.5a1.5 1.5 0 001.5-1.5V9a2 2 0 00-2-2h-3c-.11 0-.22-.03-.3-.09l-1.83-1.42A2 2 0 0010.517 5H9.05M15 11.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                </svg>
             </div>
+            <h2 class="text-2xl font-bold text-slate-800 mb-3">Welcome to your 360° Journey Builder!</h2>
+            <p class="text-slate-500 mb-8 leading-relaxed text-sm">
+                Create immersive, multi-scene interactive learning experiences. Add 360° panoramas, interactive hotspots with video and text, portal gates to jump between scenes, and linear quiz checkpoints with Gemini AI features!
+            </p>
+            <button id="welcomeCreateBtn" class="bg-indigo-600 hover:bg-indigo-750 text-white font-bold px-8 py-3.5 rounded-xl shadow-lg shadow-indigo-100 transition-all hover:scale-102">
+                + Create Your First Scene
+            </button>
+        </div>
+
+        <div id="uploadSection" class="w-full max-w-2xl mt-10 hidden">
+            <!-- Upload Box (Click handled by JS Module now) -->
+            <div id="uploadBox" class="border-2 border-dashed border-slate-300 rounded-xl bg-white p-12 text-center hover:bg-slate-50 transition-colors cursor-pointer">
+                <div class="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
+                </div>
+                <h3 class="text-xl font-bold text-slate-700 mb-2">Upload 360° Panorama</h3>
+                <p class="text-slate-500 mb-6">Equirectangular JPEG/PNG (Uploads to Firebase Cloud Storage)</p>
+                <input type="file" id="imageUpload" class="hidden" accept="image/*">
+                <button class="bg-indigo-600 text-white px-6 py-2 rounded-md font-medium">Browse Files</button>
+            </div>
+        </div>
+
+        <div id="workspaceSection" class="w-full hidden flex flex-col items-center">
+            <div id="viewerContainer" class="rounded-xl shadow-2xl border border-slate-200 overflow-hidden relative">
+                <div id="hotspotOverlay" class="absolute top-0 left-0 w-full h-full pointer-events-none z-10"></div>
+                
+                <div id="transitionOverlay" class="absolute inset-0 bg-slate-950 z-[100] opacity-0 pointer-events-none transition-opacity duration-500"></div>
+                
+                <div id="builderTransitBtnContainer" class="absolute bottom-8 transit-animate hidden z-40">
+                    <button id="builderTransitTriggerBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-full font-bold shadow-2xl flex items-center gap-2 transition-transform hover:scale-105 border-4 border-white">
+                        <span>Transit Challenge</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <p class="mt-4 text-sm text-slate-500">Drag to look around. Click in <b>Edit Mode</b> to add info points.</p>
         </div>
     </main>
 
     <!-- Draggable Floating Menu -->
     <div id="floatingMenu">
-        <!-- The Menu Panel -->
         <div id="fabPanel" class="bg-white rounded-xl shadow-2xl border border-slate-200 w-64 mb-4 hidden absolute bottom-full right-0 transition-opacity">
-            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-emerald-600 text-white rounded-t-xl">
-                <h3 class="font-bold text-sm uppercase tracking-wider flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"></path></svg>
-                    Journey Map
-                </h3>
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-800 text-white rounded-t-xl">
+                <h3 class="font-bold text-sm uppercase tracking-wider">Scenes</h3>
             </div>
-            <div id="studentSceneList" class="max-h-60 overflow-y-auto p-2 space-y-1">
-                <!-- Scenes injected here -->
+            <div id="fabSceneList" class="max-h-60 overflow-y-auto p-2 space-y-1"></div>
+            <div class="p-2 border-t border-slate-100">
+                <button id="addSceneBtn" class="w-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 py-2 rounded font-medium text-sm transition-colors">+ Add Scene</button>
             </div>
         </div>
-        
-        <!-- The Draggable Button -->
-        <button id="fabBtn" class="w-16 h-16 bg-emerald-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-emerald-700 transition-colors cursor-pointer border-4 border-white focus:outline-none" title="Drag Map, Click to Open">
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+        <button id="fabBtn" class="w-16 h-16 bg-slate-800 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-slate-700 transition-colors border-4 border-white focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
         </button>
     </div>
 
-    <!-- Hotspot Information Popup -->
-    <div id="infoPopup" class="absolute bg-white rounded-lg shadow-xl border border-slate-200 w-80 hidden z-40 transition-opacity duration-200 opacity-0 transform -translate-x-1/2">
-        <div class="p-4 relative">
-            <button id="closePopupBtn" class="absolute top-2 right-2 text-slate-400 hover:text-slate-600"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
-            <h4 id="popupTitle" class="font-bold text-lg text-slate-800 mb-2 pr-6"></h4>
-            <div id="popupVideoContainer" class="hidden mb-3 rounded overflow-hidden bg-slate-100">
-                <iframe id="popupVideo" class="w-full aspect-video" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-            </div>
-            <p id="popupDesc" class="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap"></p>
-        </div>
-        <div class="absolute w-4 h-4 bg-white border-b border-r border-slate-200 transform rotate-45 left-1/2 -ml-2 -bottom-2"></div>
+    <!-- Info Popup -->
+    <div id="infoPopup" class="absolute bg-white rounded-lg shadow-xl border border-slate-200 w-80 hidden z-40 p-4 transition-all opacity-0 -translate-x-1/2 pointer-events-auto">
+        <button id="closePopupBtn" class="absolute top-2 right-2 text-slate-400">✕</button>
+        <h4 id="popupTitle" class="font-bold text-lg mb-2 pr-6"></h4>
+        <iframe id="popupVideo" class="w-full aspect-video hidden mb-3 rounded" frameborder="0" allowfullscreen></iframe>
+        <p id="popupDesc" class="text-sm text-slate-600 leading-relaxed mb-4"></p>
+        
+        <button id="popupTransitBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded text-sm font-bold mb-2 hidden transition-colors shadow-sm">Travel Here</button>
     </div>
 
-    <!-- Quiz Modal for Transit -->
-    <div id="quizModal" class="fixed inset-0 bg-slate-900 bg-opacity-80 hidden z-50 flex items-center justify-center p-4">
+    <!-- Hotspot Form Modal -->
+    <div id="hotspotModal" class="fixed inset-0 bg-slate-900 bg-opacity-75 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full">
+            <h3 id="hotspotModalTitle" class="text-xl font-bold mb-4">Add Information Point</h3>
+            <div class="space-y-4">
+                <input type="text" id="hsTitle" class="w-full border p-2 rounded outline-none" placeholder="Title">
+                <div class="relative">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Description</label>
+                        <button id="aiHotspotBtn" class="text-xs text-indigo-600 font-bold flex items-center gap-1 hover:text-indigo-800 transition-colors">✨ Auto-fill</button>
+                    </div>
+                    <textarea id="hsDesc" rows="3" class="w-full border p-2 rounded outline-none" placeholder="Description"></textarea>
+                </div>
+                <input type="url" id="hsVideo" class="w-full border p-2 rounded outline-none" placeholder="Video Link (Optional)">
+                
+                <div class="pt-2 border-t border-slate-100">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Portal Destination (Optional)</label>
+                    <select id="hsTargetScene" class="w-full border p-2 rounded outline-none bg-slate-50 text-slate-700">
+                        <option value="">None (Standard Point)</option>
+                    </select>
+                    <p class="text-xs text-slate-400 mt-1">Make this hotspot a portal that directly jumps to another scene.</p>
+                </div>
+            </div>
+            <div class="flex justify-between items-center mt-6 pt-2">
+                <button id="deleteModalHsBtn" class="text-red-600 hover:bg-red-50 px-3 py-1.5 rounded text-sm font-medium transition-colors hidden">Delete</button>
+                <div class="flex justify-end gap-3 w-full">
+                    <button id="cancelHsBtn" class="text-slate-600">Cancel</button>
+                    <button id="saveHsBtn" class="bg-indigo-600 text-white px-4 py-2 rounded">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transit Configuration Modal -->
+    <div id="builderTransitModal" class="fixed inset-0 bg-slate-900 bg-opacity-75 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full">
+            <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-purple-600"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+                Transit Configuration
+            </h3>
+            <p class="text-sm text-slate-600 mb-4">Challenge students after they find all hotspots in this scene.</p>
+            <div class="space-y-4">
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-sm font-medium text-slate-700">Question</label>
+                        <button id="aiQuizBtn" class="text-xs text-purple-600 font-bold flex items-center gap-1 hover:text-purple-800 transition-colors">✨ Generate Challenge</button>
+                    </div>
+                    <textarea id="configTransitQuestion" rows="2" class="w-full border border-slate-300 rounded-md p-2 focus:ring-purple-500 focus:border-purple-500 outline-none" placeholder="e.g., What color was the car?"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Answer</label>
+                    <input type="text" id="configTransitAnswer" class="w-full border border-slate-300 rounded-md p-2 focus:ring-purple-500 focus:border-purple-500 outline-none" placeholder="e.g., Blue"></input>
+                </div>
+            </div>
+            <div class="flex justify-between items-center mt-6 pt-4 border-t border-slate-100">
+                <button id="clearTransitBtn" class="text-red-600 hover:bg-red-50 px-3 py-1.5 rounded text-sm font-medium transition-colors">Clear</button>
+                <div class="flex gap-2">
+                    <button id="closeTransitModal" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-md font-medium transition-colors">Cancel</button>
+                    <button id="saveTransitBtn" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 font-medium transition-colors">Save Rule</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz Preview Modal -->
+    <div id="builderQuizModal" class="fixed inset-0 bg-slate-900 bg-opacity-80 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full border-t-4 border-purple-500">
-            <div class="flex items-center gap-3 mb-4 text-purple-600">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                <h3 class="text-xl font-bold text-slate-800">Transit Challenge</h3>
-            </div>
-            <p id="quizQuestion" class="text-slate-700 mb-4 font-medium leading-relaxed"></p>
-            <input type="text" id="quizAnswer" class="w-full border border-slate-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 rounded-md p-3 mb-2 outline-none transition-all" placeholder="Type your answer here...">
-            <p id="quizError" class="text-red-500 text-sm hidden mb-4 font-medium flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Incorrect answer, please try again.</p>
+            <h3 class="text-xl font-bold text-slate-800 mb-4">Transit Challenge (Preview)</h3>
+            <p id="builderQuizQuestion" class="text-slate-700 mb-4 font-medium leading-relaxed"></p>
+            <input type="text" id="builderQuizAnswer" class="w-full border border-slate-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 rounded-md p-3 mb-2 outline-none transition-all">
+            <p id="builderQuizError" class="text-red-500 text-sm hidden mb-4">Incorrect answer.</p>
             <div class="flex justify-end gap-3 mt-6">
-                <button id="closeQuizBtn" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-md font-medium transition-colors">Cancel</button>
-                <button id="submitQuizBtn" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 font-medium transition-colors shadow-sm">Submit Answer</button>
+                <button id="builderCloseQuizBtn" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-md font-medium transition-colors">Close</button>
+                <button id="builderSubmitQuizBtn" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 font-medium transition-colors shadow-sm">Submit</button>
             </div>
         </div>
     </div>
 
-    <script>
-        const scenes = ${JSON.stringify(scenes)};
-        ${getEmbedUrl.toString()}
-        
-        let currentSceneIndex = 0;
-        let maxUnlockedIndex = 0;
+    <!-- Custom Prompt Modal -->
+    <div id="customPromptModal" class="fixed inset-0 bg-slate-900 bg-opacity-75 hidden z-[60] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full">
+            <h3 id="customPromptTitle" class="text-xl font-bold text-slate-800 mb-4"></h3>
+            <input type="text" id="customPromptInput" class="w-full border border-slate-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500 outline-none mb-4">
+            <div class="flex justify-end gap-3">
+                <button id="customPromptCancel" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-md font-medium transition-colors">Cancel</button>
+                <button id="customPromptSave" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium transition-colors">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Modal -->
+    <div id="customConfirmModal" class="fixed inset-0 bg-slate-900 bg-opacity-75 hidden z-[60] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full">
+            <h3 class="text-xl font-bold text-slate-800 mb-2">Confirm Action</h3>
+            <p id="customConfirmText" class="text-slate-600 mb-6"></p>
+            <div class="flex justify-end gap-3">
+                <button id="customConfirmNo" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-md font-medium transition-colors">Cancel</button>
+                <button id="customConfirmYes" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium transition-colors">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE AND APP LOGIC MODULE -->
+    <!-- FIXED: Upgraded SDK CDNs to a guaranteed stable version (10.13.0) to prevent 404 crashes -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAdPMFxcptu9QEng_poGGm9YteFUO8UYt4",
+            authDomain: "virtuallearningjourney.firebaseapp.com",
+            projectId: "virtuallearningjourney",
+            storageBucket: "virtuallearningjourney.firebasestorage.app",
+            messagingSenderId: "47112823271",
+            appId: "1:47112823271:web:fa1906f15a6e1ac8221d42"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const storage = getStorage(app);
+
+        // --- State Management ---
+        let scenes = [];
+        let activeSceneId = null;
+        let isEditMode = true;
+        let pendingHotspotPos = null;
+        let currentEditingIndex = null;
         let visitedHotspots = new Set();
-        
-        // Draggable FAB Logic inside exported app
-        const fab = document.getElementById('floatingMenu');
-        const fabBtn = document.getElementById('fabBtn');
-        const fabPanel = document.getElementById('fabPanel');
-        let isDragging = false;
-        let initialX, initialY, currentX = 0, currentY = 0, xOffset = 0, yOffset = 0;
+        let unlockedScenesInBuilder = new Set(); // Track completion state inside the builder
 
-        fabBtn.addEventListener('mousedown', dragStart);
-        document.addEventListener('mousemove', drag);
-        document.addEventListener('mouseup', dragEnd);
-        fabBtn.addEventListener('touchstart', dragStart, {passive: false});
-        document.addEventListener('touchmove', drag, {passive: false});
-        document.addEventListener('touchend', dragEnd);
+        // --- Gemini API Setup ---
+        const apiKey = "";
 
-        function dragStart(e) {
-            if (e.type === 'touchstart') { initialX = e.touches[0].clientX - xOffset; initialY = e.touches[0].clientY - yOffset; } 
-            else { initialX = e.clientX - xOffset; initialY = e.clientY - yOffset; }
-            isDragging = false;
-        }
-
-        function drag(e) {
-            if (initialX === undefined) return;
-            let clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
-            let clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
-
-            if (Math.abs(clientX - initialX - xOffset) > 5 || Math.abs(clientY - initialY - yOffset) > 5) {
-                isDragging = true; fab.classList.add('dragging');
+        async function callGemini(prompt, isJson = false) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: "You are an expert educational content creator helping teachers build virtual 360-degree tours." }] }
+            };
+            
+            if (isJson) {
+                payload.generationConfig = { responseMimeType: "application/json" };
             }
 
-            if (isDragging) {
-                e.preventDefault();
-                currentX = clientX - initialX; currentY = clientY - initialY;
-                xOffset = currentX; yOffset = currentY;
-                fab.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+            try {
+                let retries = 0;
+                const delays = [1000, 2000, 4000, 8000, 16000];
+                
+                while (retries <= 5) {
+                    try {
+                        const response = await fetch(url, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        const data = await response.json();
+                        if (data.candidates && data.candidates[0].content.parts[0].text) {
+                            return isJson ? JSON.parse(data.candidates[0].content.parts[0].text) : data.candidates[0].content.parts[0].text;
+                        }
+                        break;
+                    } catch (fetchErr) {
+                        if (retries === 5) {
+                            setStatus("API Error after retries. Please try again.", "error");
+                            return null;
+                        }
+                        await new Promise(r => setTimeout(r, delays[retries]));
+                        retries++;
+                    }
+                }
+            } catch (e) {
+                console.error("Gemini API Error:", e);
+            }
+            return null;
+        }
+
+        // --- Helper Helpers ---
+        function customPrompt(title, defaultValue, callback) {
+            const modal = document.getElementById('customPromptModal');
+            document.getElementById('customPromptTitle').textContent = title;
+            const input = document.getElementById('customPromptInput');
+            input.value = defaultValue;
+            modal.classList.remove('hidden');
+            input.focus();
+
+            document.getElementById('customPromptSave').onclick = () => {
+                modal.classList.add('hidden');
+                callback(input.value);
+            };
+            document.getElementById('customPromptCancel').onclick = () => {
+                modal.classList.add('hidden');
+                callback(null);
+            };
+        }
+
+        function customConfirm(message, callback) {
+            const modal = document.getElementById('customConfirmModal');
+            document.getElementById('customConfirmText').textContent = message;
+            modal.classList.remove('hidden');
+
+            document.getElementById('customConfirmYes').onclick = () => {
+                modal.classList.add('hidden');
+                callback(true);
+            };
+            document.getElementById('customConfirmNo').onclick = () => {
+                modal.classList.add('hidden');
+                callback(false);
+            };
+        }
+
+        function getPointer(event) {
+            if (event.touches && event.touches.length > 0) return { x: event.touches[0].clientX, y: event.touches[0].clientY };
+            if (event.changedTouches && event.changedTouches.length > 0) return { x: event.changedTouches[0].clientX, y: event.changedTouches[0].clientY };
+            return { x: event.clientX, y: event.clientY };
+        }
+
+        // --- Three.js Setup ---
+        let scene, camera, renderer, sphere;
+        let isUserInteracting = false, onMouseDownMouseX = 0, onMouseDownMouseY = 0, lon = 0, onMouseDownLon = 0, lat = 0, onMouseDownLat = 0, phi = 0, theta = 0;
+
+        function initThree() {
+            const container = document.getElementById('viewerContainer');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 1, 1100);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            
+            container.insertBefore(renderer.domElement, container.firstChild);
+
+            const geometry = new THREE.SphereGeometry(500, 60, 40);
+            geometry.scale(-1, 1, 1);
+            const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+            sphere = new THREE.Mesh(geometry, material);
+            scene.add(sphere);
+
+            container.addEventListener('mousedown', onPointerStart);
+            document.addEventListener('mousemove', onPointerMove);
+            document.addEventListener('mouseup', onPointerUp);
+            
+            container.addEventListener('touchstart', onPointerStart, {passive: false});
+            document.addEventListener('touchmove', onPointerMove, {passive: false});
+            document.addEventListener('touchend', onPointerUp);
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function anyModalOpen() {
+            const modals = ['hotspotModal', 'builderTransitModal', 'builderQuizModal', 'customPromptModal', 'customConfirmModal'];
+            return modals.some(id => !document.getElementById(id).classList.contains('hidden'));
+        }
+
+        function onPointerStart(event) {
+            // Ignore if we click the UI, a modal is open, or we clicked an EXISTING marker
+            if (event.target.closest('#floatingMenu') || event.target.closest('.hotspot-marker') || anyModalOpen()) return;
+
+            const ptr = getPointer(event);
+            isUserInteracting = true;
+            onMouseDownMouseX = ptr.x;
+            onMouseDownMouseY = ptr.y;
+            onMouseDownLon = lon;
+            onMouseDownLat = lat;
+
+            if (isEditMode) {
+                const rect = renderer.domElement.getBoundingClientRect();
+                const mouse = new THREE.Vector2(
+                    ((ptr.x - rect.left) / rect.width) * 2 - 1,
+                    -((ptr.y - rect.top) / rect.height) * 2 + 1
+                );
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects([sphere]);
+                
+                if (intersects.length > 0) {
+                    pendingHotspotPos = intersects[0].point.clone().normalize();
+                } else {
+                    pendingHotspotPos = null;
+                }
             }
         }
-        function dragEnd() { initialX = undefined; initialY = undefined; fab.classList.remove('dragging'); }
-        
-        fabBtn.addEventListener('click', (e) => {
-            if (isDragging) { e.preventDefault(); return; }
-            fabPanel.classList.toggle('hidden');
-        });
 
-        // App Logic
-        const studentSceneList = document.getElementById('studentSceneList');
-        const hotspotContainer = document.getElementById('hotspotContainer');
-        const infoPopup = document.getElementById('infoPopup');
-        const popupTitle = document.getElementById('popupTitle');
-        const popupDesc = document.getElementById('popupDesc');
-        const imageContainerWrapper = document.getElementById('imageContainerWrapper');
-        const transitBtnContainer = document.getElementById('transitBtnContainer');
+        function onPointerMove(event) {
+            if (!isUserInteracting) return;
+            const ptr = getPointer(event);
+            
+            lon = (onMouseDownMouseX - ptr.x) * 0.1 + onMouseDownLon;
+            lat = (ptr.y - onMouseDownMouseY) * 0.1 + onMouseDownLat;
+            
+            if (Math.abs(ptr.x - onMouseDownMouseX) > 10 || Math.abs(ptr.y - onMouseDownMouseY) > 10) {
+                pendingHotspotPos = null; 
+            }
+        }
 
-        function initApp() { renderFloatingMenu(); loadScene(0); }
+        function onPointerUp(event) {
+            const wasInteracting = isUserInteracting;
+            isUserInteracting = false;
+            
+            if (!wasInteracting) return;
+            
+            if (isEditMode && pendingHotspotPos) {
+                closePopup();
+                currentEditingIndex = null;
+                document.getElementById('hotspotModalTitle').textContent = 'Add Information Point';
+                document.getElementById('hsTitle').value = '';
+                document.getElementById('hsTitle').classList.remove('border-red-500');
+                document.getElementById('hsDesc').value = '';
+                document.getElementById('hsVideo').value = '';
+                
+                const select = document.getElementById('hsTargetScene');
+                select.innerHTML = '<option value="">None (Standard Point)</option>';
+                scenes.forEach(s => {
+                    if (s.id !== activeSceneId) {
+                        const opt = document.createElement('option');
+                        opt.value = s.id;
+                        opt.textContent = s.title;
+                        select.appendChild(opt);
+                    }
+                });
+
+                document.getElementById('deleteModalHsBtn').classList.add('hidden');
+                document.getElementById('hotspotModal').classList.remove('hidden');
+            }
+        }
+
+        function onDocumentMouseWheel(event) {
+            const fov = camera.fov + event.deltaY * 0.05;
+            camera.fov = THREE.MathUtils.clamp(fov, 10, 75);
+            camera.updateProjectionMatrix();
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('viewerContainer');
+            if (!container) return;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            update();
+        }
+
+        function update() {
+            lat = Math.max(-85, Math.min(85, lat));
+            phi = THREE.MathUtils.degToRad(90 - lat);
+            theta = THREE.MathUtils.degToRad(lon);
+
+            camera.target = new THREE.Vector3(
+                500 * Math.sin(phi) * Math.cos(theta),
+                500 * Math.cos(phi),
+                500 * Math.sin(phi) * Math.sin(theta)
+            );
+            camera.lookAt(camera.target);
+            renderer.render(scene, camera);
+            updateHotspotMarkers();
+        }
+
+        function updateHotspotMarkers() {
+            const sceneObj = scenes.find(s => s.id === activeSceneId);
+            if (!sceneObj) return;
+
+            sceneObj.hotspots.forEach((hs, idx) => {
+                const marker = document.getElementById(`marker-${idx}`);
+                if (!marker) return;
+                const vector = new THREE.Vector3(hs.pos.x, hs.pos.y, hs.pos.z);
+                vector.project(camera);
+                if (vector.z < 1) {
+                    const x = (vector.x * 0.5 + 0.5) * renderer.domElement.clientWidth;
+                    const y = (vector.y * -0.5 + 0.5) * renderer.domElement.clientHeight;
+                    marker.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+                    marker.style.display = 'flex';
+                } else {
+                    marker.style.display = 'none';
+                }
+            });
+        }
+
+        // --- Logic ---
+        function setStatus(msg, type = 'info') {
+            document.getElementById('statusText').textContent = msg;
+            const banner = document.getElementById('statusBanner');
+            banner.className = `p-4 mb-6 rounded-r-md flex justify-between items-center transition-all border-l-4 ${type === 'error' ? 'bg-red-50 border-red-500 text-red-800' : 'bg-indigo-50 border-indigo-500 text-indigo-800'}`;
+        }
 
         function renderFloatingMenu() {
-            studentSceneList.innerHTML = '';
-            scenes.forEach((scene, i) => {
-                const isUnlocked = i <= maxUnlockedIndex;
-                const isActive = i === currentSceneIndex;
-                
-                const btn = document.createElement('button');
-                btn.className = `w-full text-left px-3 py-2 rounded mb-1 text-sm font-medium transition-all flex items-center justify-between ${
-                    isActive ? 'bg-emerald-100 text-emerald-800' : 
-                    isUnlocked ? 'text-slate-700 hover:bg-slate-100' : 
-                    'text-slate-400 opacity-60 cursor-not-allowed'
-                }`;
-                
-                let iconHtml = '';
-                if (!isUnlocked) iconHtml = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
-                else if (isActive) iconHtml = '<div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>';
-
-                btn.innerHTML = `<span class="truncate pr-2">${i + 1}. ${scene.title}</span>${iconHtml}`;
-                if (isUnlocked) btn.onclick = () => { loadScene(i); fabPanel.classList.add('hidden'); };
-                studentSceneList.appendChild(btn);
+            const list = document.getElementById('fabSceneList');
+            list.innerHTML = scenes.length ? '' : '<p class="text-xs text-slate-500 p-2 text-center">No scenes.</p>';
+            scenes.forEach((s, i) => {
+                const isActive = s.id === activeSceneId;
+                const div = document.createElement('div');
+                div.className = `w-full px-3 py-2 rounded-md mb-1 text-sm font-medium flex items-center justify-between group cursor-pointer ${isActive ? 'bg-indigo-100 text-indigo-800' : 'text-slate-600 hover:bg-slate-100'}`;
+                div.innerHTML = `<span class="truncate">${i + 1}. ${s.title}</span>`;
+                const del = document.createElement('button');
+                del.className = 'opacity-0 group-hover:opacity-100 text-red-500 p-1';
+                del.innerHTML = '✕';
+                del.onclick = (e) => { 
+                    e.stopPropagation(); 
+                    customConfirm(`Delete "${s.title}"?`, (confirmed) => {
+                        if (confirmed) {
+                            scenes = scenes.filter(sc => sc.id !== s.id); 
+                            switchScene(scenes[0]?.id);
+                        }
+                    });
+                };
+                div.appendChild(del);
+                div.onclick = () => { switchScene(s.id); fabPanel.classList.add('hidden'); };
+                list.appendChild(div);
             });
         }
 
-        function loadScene(index) {
-            currentSceneIndex = index;
-            visitedHotspots.clear();
-            const scene = scenes[index];
-            
-            document.getElementById('currentSceneTitle').textContent = `Scene ${index + 1}: ${scene.title}`;
-            document.getElementById('mainImage').src = scene.imageSrc;
-            transitBtnContainer.classList.add('hidden');
+        function switchScene(id) {
+            activeSceneId = id;
+            const s = scenes.find(sc => sc.id === id);
             closePopup();
-            renderFloatingMenu();
+            visitedHotspots.clear();
+            document.getElementById('builderTransitBtnContainer').classList.add('hidden');
             
-            if (index === scenes.length - 1 && maxUnlockedIndex >= scenes.length - 1) document.getElementById('completionBanner').classList.remove('hidden');
-            if (index === scenes.length - 1) document.getElementById('transitBtnText').textContent = "Complete Journey";
-            else document.getElementById('transitBtnText').textContent = "Unlock Next Scene";
-
-            hotspotContainer.innerHTML = '';
-            scene.hotspots.forEach((hs, hsIndex) => {
-                const marker = document.createElement('div');
-                marker.className = 'hotspot-marker absolute w-8 h-8 -ml-4 -mt-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-pointer flex items-center justify-center text-white z-10';
-                marker.style.left = hs.x + '%'; marker.style.top = hs.y + '%';
-                marker.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+            if (!s) {
+                document.getElementById('workspaceSection').classList.add('hidden');
+                document.getElementById('uploadSection').classList.add('hidden');
+                // FIXED: Direct user guidance on cold-starts! Shows the welcome card when scene is empty
+                document.getElementById('welcomeSection').classList.remove('hidden');
+                document.getElementById('currentSceneTitleHeader').textContent = "360° Journey Builder";
+                renderFloatingMenu();
+                return;
+            }
+            
+            document.getElementById('welcomeSection').classList.add('hidden');
+            document.getElementById('currentSceneTitleHeader').textContent = s.title;
+            
+            const imgSrcToLoad = s.localImageSrc || s.imageSrc;
+            
+            if (!imgSrcToLoad) {
+                document.getElementById('uploadSection').classList.remove('hidden');
+                document.getElementById('workspaceSection').classList.add('hidden');
+            } else {
+                document.getElementById('uploadSection').classList.add('hidden');
+                document.getElementById('workspaceSection').classList.remove('hidden');
                 
-                marker.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    marker.classList.add('visited');
-                    marker.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-                    
-                    visitedHotspots.add(hsIndex);
-                    if (scene.transitConfig && visitedHotspots.size === scene.hotspots.length) transitBtnContainer.classList.remove('hidden');
+                setTimeout(onWindowResize, 0);
 
-                    popupTitle.textContent = hs.title; popupDesc.textContent = hs.desc;
-                    const videoContainer = document.getElementById('popupVideoContainer');
-                    const videoIframe = document.getElementById('popupVideo');
-                    const embedUrl = getEmbedUrl(hs.videoUrl);
-                    if (embedUrl) { videoIframe.src = embedUrl; videoContainer.classList.remove('hidden'); } 
-                    else { videoIframe.src = ''; videoContainer.classList.add('hidden'); }
-                    
-                    infoPopup.classList.remove('hidden');
-                    const wrapperRect = imageContainerWrapper.getBoundingClientRect();
-                    const markerRect = marker.getBoundingClientRect();
-                    const popupTop = markerRect.top - wrapperRect.top - infoPopup.offsetHeight - 10; 
-                    const popupLeft = markerRect.left - wrapperRect.left + (markerRect.width / 2);
-                    infoPopup.style.top = popupTop + 'px'; infoPopup.style.left = popupLeft + 'px';
-                    imageContainerWrapper.appendChild(infoPopup);
-                    
-                    setTimeout(() => { infoPopup.classList.remove('opacity-0'); infoPopup.classList.add('opacity-100'); }, 10);
-                });
-                hotspotContainer.appendChild(marker);
+                const loader = new THREE.TextureLoader();
+                
+                if (!imgSrcToLoad.startsWith('blob:') && !imgSrcToLoad.startsWith('data:')) {
+                    loader.setCrossOrigin('anonymous');
+                }
+                
+                loader.load(
+                    imgSrcToLoad, 
+                    (texture) => {
+                        sphere.material.map = texture;
+                        sphere.material.needsUpdate = true;
+                    },
+                    undefined,
+                    (err) => {
+                        console.error("CORS Error:", err);
+                        if (imgSrcToLoad.startsWith('blob:')) {
+                            setStatus("Error loading local preview.", "error");
+                        } else {
+                            setStatus("Image blocked by CORS. Please configure Firebase Storage CORS rules.", "error");
+                        }
+                    }
+                );
+                renderHotspots();
+            }
+            renderFloatingMenu();
+        }
+
+        function renderHotspots() {
+            const overlay = document.getElementById('hotspotOverlay');
+            overlay.innerHTML = '';
+            const s = scenes.find(sc => sc.id === activeSceneId);
+            if (!s) return;
+
+            s.hotspots.forEach((hs, idx) => {
+                const marker = document.createElement('div');
+                marker.id = `marker-${idx}`;
+                marker.className = 'hotspot-marker absolute w-8 h-8 bg-indigo-500 border-2 border-white rounded-full flex items-center justify-center text-white text-xs font-bold pointer-events-auto cursor-pointer shadow-lg';
+                marker.innerHTML = 'i';
+                marker.onclick = (e) => {
+                    e.stopPropagation();
+                    if (!isEditMode) {
+                        marker.classList.add('visited');
+                        visitedHotspots.add(idx);
+                        if (s.transitConfig && visitedHotspots.size === s.hotspots.length && !unlockedScenesInBuilder.has(activeSceneId)) {
+                            document.getElementById('builderTransitBtnContainer').classList.remove('hidden');
+                        }
+                        openPopup(hs, idx);
+                    } else {
+                        currentEditingIndex = idx;
+                        pendingHotspotPos = null; // We are editing, not placing a new one
+                        
+                        document.getElementById('hotspotModalTitle').textContent = 'Edit Information Point';
+                        document.getElementById('hsTitle').value = hs.title || '';
+                        document.getElementById('hsTitle').classList.remove('border-red-500');
+                        document.getElementById('hsDesc').value = hs.desc || '';
+                        document.getElementById('hsVideo').value = hs.videoUrl || '';
+                        
+                        const select = document.getElementById('hsTargetScene');
+                        select.innerHTML = '<option value="">None (Standard Point)</option>';
+                        scenes.forEach(otherScene => {
+                            if (otherScene.id !== activeSceneId) {
+                                const opt = document.createElement('option');
+                                opt.value = otherScene.id;
+                                opt.textContent = otherScene.title;
+                                if (otherScene.id === hs.targetSceneId) opt.selected = true;
+                                select.appendChild(opt);
+                            }
+                        });
+
+                        document.getElementById('deleteModalHsBtn').classList.remove('hidden');
+                        document.getElementById('hotspotModal').classList.remove('hidden');
+                    }
+                };
+                overlay.appendChild(marker);
             });
+        }
+
+        function openPopup(hs, idx) {
+            currentEditingIndex = idx;
+            document.getElementById('popupTitle').textContent = hs.title;
+            document.getElementById('popupDesc').textContent = hs.desc;
+            const vid = document.getElementById('popupVideo');
+            const embed = getEmbedUrl(hs.videoUrl);
+            if (embed) { vid.src = embed; vid.classList.remove('hidden'); } else { vid.src = ''; vid.classList.add('hidden'); }
             
-            if (scene.transitConfig && scene.hotspots.length === 0) transitBtnContainer.classList.remove('hidden');
+            const transitBtn = document.getElementById('popupTransitBtn');
+            if (hs.targetSceneId) {
+                const targetScene = scenes.find(s => s.id === hs.targetSceneId);
+                if (targetScene) {
+                    transitBtn.textContent = `Travel to: ${targetScene.title}`;
+                    transitBtn.classList.remove('hidden');
+                    transitBtn.onclick = () => {
+                        unlockedScenesInBuilder.add(hs.targetSceneId);
+                        closePopup();
+                        
+                        // Start Portal Zoom and Fade Transition
+                        const overlay = document.getElementById('transitionOverlay');
+                        overlay.classList.remove('opacity-0', 'pointer-events-none');
+                        overlay.classList.add('opacity-100', 'pointer-events-auto');
+                        
+                        const originalFov = camera.fov;
+                        const zoomInt = setInterval(() => {
+                            camera.fov -= 1.5; 
+                            if(camera.fov < 10) camera.fov = 10;
+                            camera.updateProjectionMatrix();
+                        }, 16);
+
+                        setTimeout(() => {
+                            clearInterval(zoomInt);
+                            camera.fov = originalFov; // reset camera for next scene
+                            camera.updateProjectionMatrix();
+                            switchScene(hs.targetSceneId);
+                            
+                            setTimeout(() => {
+                                overlay.classList.remove('opacity-100', 'pointer-events-auto');
+                                overlay.classList.add('opacity-0', 'pointer-events-none');
+                            }, 100);
+                        }, 500);
+                    };
+                } else {
+                    transitBtn.classList.add('hidden'); 
+                }
+            } else {
+                transitBtn.classList.add('hidden');
+            }
+
+            const p = document.getElementById('infoPopup');
+            p.classList.remove('hidden');
+            
+            const marker = document.getElementById(`marker-${idx}`);
+            if (marker) {
+                const rect = marker.getBoundingClientRect();
+                p.style.top = (rect.top - p.offsetHeight - 20) + 'px';
+                p.style.left = rect.left + 'px';
+            }
+            setTimeout(() => { p.classList.remove('opacity-0'); p.classList.add('opacity-100'); }, 10);
         }
 
         function closePopup() {
-            infoPopup.classList.remove('opacity-100'); infoPopup.classList.add('opacity-0');
-            setTimeout(() => { infoPopup.classList.add('hidden'); document.getElementById('popupVideo').src = ''; }, 200);
+            const p = document.getElementById('infoPopup');
+            p.classList.remove('opacity-100');
+            setTimeout(() => { p.classList.add('hidden'); document.getElementById('popupVideo').src = ''; }, 200);
         }
 
-        document.getElementById('closePopupBtn').addEventListener('click', closePopup);
-        document.addEventListener('click', (e) => {
-            if (!infoPopup.classList.contains('hidden') && !infoPopup.contains(e.target) && !e.target.closest('.hotspot-marker')) closePopup();
-            if (!fab.contains(e.target) && !fabPanel.classList.contains('hidden')) fabPanel.classList.add('hidden');
-        });
+        function getEmbedUrl(url) {
+            if (!url) return null;
+            const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=))([\w-]{11})/);
+            return ytMatch ? `https://www.youtube.com/embed/${ytMatch[1]}` : null;
+        }
 
-        // Transit Quiz Logic
-        const quizModal = document.getElementById('quizModal');
-        document.getElementById('transitTriggerBtn').addEventListener('click', () => {
-            const scene = scenes[currentSceneIndex];
-            if(!scene.transitConfig) return;
-            document.getElementById('quizQuestion').textContent = scene.transitConfig.question;
-            document.getElementById('quizAnswer').value = '';
-            document.getElementById('quizError').classList.add('hidden');
-            document.getElementById('quizAnswer').classList.remove('border-red-500');
-            quizModal.classList.remove('hidden');
-            setTimeout(() => document.getElementById('quizAnswer').focus(), 100);
-        });
-        
-        document.getElementById('closeQuizBtn').addEventListener('click', () => quizModal.classList.add('hidden'));
+        // --- Controls & Event Listeners ---
+        const fabBtn = document.getElementById('fabBtn');
+        const fabPanel = document.getElementById('fabPanel');
+        fabBtn.onclick = () => fabPanel.classList.toggle('hidden');
 
-        document.getElementById('submitQuizBtn').addEventListener('click', () => {
-            const scene = scenes[currentSceneIndex];
-            const userAns = document.getElementById('quizAnswer').value.trim().toLowerCase();
-            const correctAns = scene.transitConfig.answer.trim().toLowerCase();
+        // Helper function to spin up a scene creation flow
+        const triggerCreateScene = () => {
+            customPrompt("Enter Scene Name:", `Scene ${scenes.length + 1}`, (name) => {
+                if (!name || !name.trim()) return;
+                const id = 's' + Date.now();
+                scenes.push({ id, title: name.trim(), imageSrc: null, localImageSrc: null, hotspots: [], transitConfig: null });
+                switchScene(id);
+                fabPanel.classList.add('hidden');
+            });
+        };
+
+        document.getElementById('addSceneBtn').onclick = (e) => {
+            e.stopPropagation();
+            triggerCreateScene();
+        };
+
+        document.getElementById('welcomeCreateBtn').onclick = () => {
+            triggerCreateScene();
+        };
+
+        // Firebase File Upload Trigger
+        document.getElementById('uploadBox').onclick = () => {
+            document.getElementById('imageUpload').click();
+        };
+
+        // Firebase Cloud Storage Upload Handler + Instant Local Preview
+        document.getElementById('imageUpload').onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
             
-            if (userAns === correctAns) {
-                quizModal.classList.add('hidden');
-                if (currentSceneIndex === maxUnlockedIndex && currentSceneIndex < scenes.length - 1) maxUnlockedIndex++;
-                if (currentSceneIndex < scenes.length - 1) loadScene(currentSceneIndex + 1);
-                else { transitBtnContainer.classList.add('hidden'); document.getElementById('completionBanner').classList.remove('hidden'); window.scrollTo(0,0); }
-            } else {
-                document.getElementById('quizError').classList.remove('hidden');
-                document.getElementById('quizAnswer').classList.add('border-red-500');
+            const s = scenes.find(sc => sc.id === activeSceneId);
+            if (s) {
+                s.localImageSrc = URL.createObjectURL(file);
+                switchScene(activeSceneId); 
             }
-        });
+            
+            setStatus(`Starting background upload for ${file.name}...`, "info");
 
-        document.getElementById('quizAnswer').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('submitQuizBtn').click(); });
+            const storageRef = ref(storage, 'scenes/' + Date.now() + '_' + file.name);
+            const uploadTask = uploadBytesResumable(storageRef, file);
 
-        initApp();
+            uploadTask.on('state_changed', 
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    const transferredMB = (snapshot.bytesTransferred / (1024 * 1024)).toFixed(2);
+                    const totalMB = (snapshot.totalBytes / (1024 * 1024)).toFixed(2);
+                    
+                    setStatus(`Uploading... ${Math.round(progress)}% (${transferredMB} MB / ${totalMB} MB)`, "info");
+                }, 
+                (error) => {
+                    console.error("Firebase Upload Error:", error);
+                    setStatus(`Upload failed: ${error.message}`, "error");
+                }, 
+                async () => {
+                    try {
+                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                        if (s) { 
+                            s.imageSrc = downloadURL;
+                            setStatus("Upload complete! Image saved to cloud.", "success");
+                        }
+                    } catch (err) {
+                        setStatus("Error getting download link. Check console.", "error");
+                        console.error(err);
+                    }
+                }
+            );
+        };
+
+        document.getElementById('saveHsBtn').onclick = () => {
+            const titleInput = document.getElementById('hsTitle');
+            const t = titleInput.value.trim();
+            if (!t) {
+                titleInput.classList.add('border-red-500');
+                return;
+            }
+            titleInput.classList.remove('border-red-500');
+            
+            const s = scenes.find(sc => sc.id === activeSceneId);
+            if (!s) return;
+            
+            const targetSceneId = document.getElementById('hsTargetScene').value;
+
+            if (currentEditingIndex !== null) {
+                // Update existing hotspot
+                s.hotspots[currentEditingIndex].title = t;
+                s.hotspots[currentEditingIndex].desc = document.getElementById('hsDesc').value.trim();
+                s.hotspots[currentEditingIndex].videoUrl = document.getElementById('hsVideo').value.trim();
+                s.hotspots[currentEditingIndex].targetSceneId = targetSceneId || null;
+            } else if (pendingHotspotPos) {
+                // Add new hotspot
+                s.hotspots.push({
+                    title: t,
+                    desc: document.getElementById('hsDesc').value.trim(),
+                    videoUrl: document.getElementById('hsVideo').value.trim(),
+                    targetSceneId: targetSceneId || null,
+                    pos: { x: pendingHotspotPos.x, y: pendingHotspotPos.y, z: pendingHotspotPos.z }
+                });
+            }
+            
+            document.getElementById('hotspotModal').classList.add('hidden');
+            pendingHotspotPos = null;
+            currentEditingIndex = null;
+            renderHotspots();
+        };
+
+        document.getElementById('cancelHsBtn').onclick = () => {
+            document.getElementById('hotspotModal').classList.add('hidden');
+            pendingHotspotPos = null;
+            currentEditingIndex = null;
+        };
+        
+        document.getElementById('deleteModalHsBtn').onclick = () => {
+            const s = scenes.find(sc => sc.id === activeSceneId);
+            if (s && currentEditingIndex !== null) {
+                s.hotspots.splice(currentEditingIndex, 1);
+                document.getElementById('hotspotModal').classList.add('hidden');
+                currentEditingIndex = null;
+                renderHotspots();
+            }
+        };
+        
+        document.getElementById('closePopupBtn').onclick = () => closePopup();
+
+        document.getElementById('toggleModeBtn').onclick = () => {
+            isEditMode = !isEditMode;
+            
+            if (!isEditMode) {
+                unlockedScenesInBuilder.clear();
+            }
+
+            document.getElementById('toggleModeBtn').innerHTML = isEditMode ? 
+                '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Preview Mode' : 
+                '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Edit Mode';
+            document.body.classList.toggle('edit-mode', isEditMode);
+            setStatus(isEditMode ? "Edit Mode: Click in the viewer to add info points." : "Preview Mode: Testing interactions and transitions.");
+            switchScene(activeSceneId);
+        };
+
+        document.getElementById('setupTransitBtn').onclick = () => {
+            const s = scenes.find(sc => sc.id === activeSceneId);
+            if (!s) return;
+            document.getElementById('configTransitQuestion').value = s.transitConfig?.question || '';
+            document.getElementById('configTransitAnswer').value = s.transitConfig?.answer || '';
+            document.getElementById('builderTransitModal').classList.remove('hidden');
+        };
+
+        document.getElementById('saveTransitBtn').onclick = () => {
+            const s = scenes.find(sc => sc.id === activeSceneId);
+            const q = document.getElementById('configTransitQuestion').value.trim();
+            const a = document.getElementById('configTransitAnswer').value.trim();
+            if (s && q && a) {
+                s.transitConfig = { question: q, answer: a };
+                document.getElementById('builderTransitModal').classList.add('hidden');
+                setStatus("Transit rule saved.", "success");
+            }
+        };
+
+        document.getElementById('clearTransitBtn').onclick = () => {
+            const s = scenes.find(sc => sc.id === activeSceneId);
+            if (s) s.transitConfig = null;
+            document.getElementById('builderTransitModal').classList.add('hidden');
+        };
+
+        document.getElementById('closeTransitModal').onclick = () => {
+            document.getElementById('builderTransitModal').classList.add('hidden');
+        };
+
+        document.getElementById('builderTransitTriggerBtn').onclick = () => {
+            const s = scenes.find(sc => sc.id === activeSceneId);
+            if (!s?.transitConfig) return;
+            document.getElementById('builderQuizQuestion').textContent = s.transitConfig.question;
+            document.getElementById('builderQuizAnswer').value = '';
+            document.getElementById('builderQuizError').classList.add('hidden');
+            document.getElementById('builderQuizModal').classList.remove('hidden');
+        };
+
+        document.getElementById('builderSubmitQuizBtn').onclick = () => {
+            const s = scenes.find(sc => sc.id === activeSceneId);
+            const ans = document.getElementById('builderQuizAnswer').value.trim().toLowerCase();
+            if (ans === s.transitConfig.answer.toLowerCase()) {
+                document.getElementById('builderQuizModal').classList.add('hidden');
+                
+                unlockedScenesInBuilder.add(activeSceneId);
+                document.getElementById('builderTransitBtnContainer').classList.add('hidden');
+                
+                setStatus("Success! Scene unlocked.", "success");
+            } else {
+                document.getElementById('builderQuizError').classList.remove('hidden');
+            }
+        };
+
+        document.getElementById('builderCloseQuizBtn').onclick = () => {
+            document.getElementById('builderQuizModal').classList.add('hidden');
+        };
+
+        document.getElementById('exportBtn').onclick = () => {
+            if (!scenes.length || scenes.some(s => !s.imageSrc)) { alert("Setup scenes and wait for cloud uploads to finish first."); return; }
+            
+            const exportScenes = scenes.map(s => {
+                const { localImageSrc, ...rest } = s;
+                return rest;
+            });
+            
+            // FIXED: Upgraded exported app's Three.js loader with sleek loaders, spinners, and diagnostics overlays!
+            const exportHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>360 Learning Journey</title>
+    <script src="https://cdn.tailwindcss.com"><\/script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        .hotspot { position: absolute; width: 32px; height: 32px; background: #6366f1; border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer; transform: translate(-50%, -50%); box-shadow: 0 0 10px rgba(0,0,0,0.5); font-weight: bold; transition: background 0.3s; z-index: 10; }
+        .visited { background: #10b981 !important; }
+        #menu { position: fixed; bottom: 20px; right: 20px; z-index: 100; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0) translateX(-50%); } 50% { transform: translateY(-10px) translateX(-50%); } }
+        .transit-btn { animation: bounce 2s infinite; left: 50%; }
+    </style>
+</head>
+<body>
+    <div id="container" style="width: 100vw; height: 100vh;"></div>
+    <div id="overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-10"></div>
+    
+    <!-- NEW: Beautiful dynamic Loading Overlay + Diagnostical Help Screen inside your exported tours! -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-slate-950 z-[99999] flex flex-col items-center justify-center transition-all duration-500">
+        <div id="loadingContent" class="text-center">
+            <div class="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-white font-medium text-lg tracking-wide">Loading 360° Experience...</p>
+            <p id="loadingStatusText" class="text-slate-400 text-sm mt-2">Fetching scene panorama...</p>
+        </div>
+        <div id="errorBox" class="max-w-md w-full mx-4 bg-slate-900 border border-red-500/30 rounded-2xl p-6 text-center hidden">
+            <div class="bg-red-500/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+            <h3 class="text-white font-bold text-lg mb-2">Image Loading Blocked (CORS)</h3>
+            <p class="text-slate-400 text-sm mb-4 leading-relaxed">
+                WebGL requires cross-origin permission to render this 360° image. Please make sure you have configured CORS rules on your Firebase Storage bucket.
+            </p>
+            <div class="bg-slate-950 rounded-lg p-3 text-left font-mono text-xs text-slate-300 overflow-x-auto mb-4 max-h-24">
+                1. Paste this in Cloud Shell:<br>
+                echo '[{"origin": ["*"],"method": ["GET"],"maxAgeSeconds": 3600}]' > cors.json<br><br>
+                2. Apply rule:<br>
+                gsutil cors set cors.json gs://virtuallearningjourney.firebasestorage.app
+            </div>
+            <button onclick="window.location.reload()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2 rounded-lg text-sm transition-colors">
+                Retry Loading
+            </button>
+        </div>
+    </div>
+
+    <div id="fadeOverlay" class="fixed inset-0 bg-slate-950 z-[9999] opacity-0 pointer-events-none transition-opacity duration-500"></div>
+    <div id="transitContainer" class="fixed bottom-10 transit-btn hidden z-50">
+        <button id="transitTrigger" class="bg-purple-600 text-white px-8 py-4 rounded-full font-bold shadow-2xl border-4 border-white">Next Scene</button>
+    </div>
+    <div id="menu">
+        <div id="menuPanel" class="hidden bg-white p-4 rounded-lg mb-4 shadow-2xl w-64">
+            <h3 class="font-bold border-b mb-2 pb-1">Tour Map</h3>
+            <div id="sceneLinks" class="space-y-1"></div>
+        </div>
+        <button id="menuBtn" class="bg-indigo-600 text-white w-14 h-14 rounded-full flex items-center justify-center">MAP</button>
+    </div>
+    <div id="popup" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-xl shadow-2xl hidden w-80 max-w-[90vw] z-[200]">
+        <button onclick="closeP()" class="absolute top-2 right-2 text-slate-400">✕</button>
+        <h2 id="pTitle" class="font-bold text-xl mb-2"></h2>
+        <iframe id="pVid" class="w-full aspect-video hidden mb-3 rounded" frameborder="0" allowfullscreen></iframe>
+        <p id="pDesc" class="text-slate-600 text-sm leading-relaxed mb-4"></p>
+        <button id="pTransitBtn" class="w-full bg-purple-600 text-white py-2 rounded text-sm font-bold mb-2 hidden shadow-sm">Travel Here</button>
+    </div>
+    <div id="quiz" class="fixed inset-0 bg-slate-900/90 hidden z-[300] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full border-t-4 border-purple-500">
+            <h3 class="text-xl font-bold mb-4">Challenge</h3>
+            <p id="qText" class="mb-4"></p>
+            <input type="text" id="qAns" class="w-full border p-3 rounded-md mb-2">
+            <div class="flex justify-end gap-3 mt-4"><button onclick="document.getElementById('quiz').classList.add('hidden')" class="text-slate-500">Cancel</button><button id="qSub" class="bg-purple-600 text-white px-6 py-2 rounded-md font-bold">Submit</button></div>
+        </div>
+    </div>
+    <script>
+        const scenes = ${JSON.stringify(exportScenes)};
+        let cur = 0, max = 0, lon = 0, lat = 0;
+        let scene, camera, renderer, sphere, vis = new Set();
+        
+        function getPtr(e) {
+            if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        function showError(msg) {
+            document.getElementById('loadingContent').classList.add('hidden');
+            const eBox = document.getElementById('errorBox');
+            eBox.querySelector('h3').textContent = "Error Loading Tour";
+            eBox.querySelector('p').textContent = msg;
+            eBox.querySelector('.font-mono').classList.add('hidden');
+            eBox.classList.remove('hidden');
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            const c = document.getElementById('container');
+            c.appendChild(renderer.domElement);
+            
+            const geo = new THREE.SphereGeometry(500, 60, 40); geo.scale(-1, 1, 1);
+            sphere = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+            scene.add(sphere);
+            
+            window.onresize = () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
+            
+            let isD = false, mx, my, mL, mLat;
+            const start = (e) => { isD = true; const p = getPtr(e); mx = p.x; my = p.y; mL = lon; mLat = lat; };
+            const move = (e) => { if(!isD) return; const p = getPtr(e); lon = (mx - p.x) * 0.1 + mL; lat = (p.y - my) * 0.1 + mLat; };
+            
+            c.addEventListener('mousedown', start);
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', () => isD = false);
+            c.addEventListener('touchstart', start, {passive:false});
+            document.addEventListener('touchmove', move, {passive:false});
+            document.addEventListener('touchend', () => isD = false);
+            
+            load(0); animate();
+        }
+
+        function load(idx) {
+            cur = idx; vis.clear(); const s = scenes[idx];
+            if (!s) {
+                showError("No valid scene found in this tour file.");
+                return;
+            }
+            
+            // Show loading indicators
+            document.getElementById('loadingOverlay').classList.remove('opacity-0', 'pointer-events-none');
+            document.getElementById('loadingOverlay').classList.add('opacity-100', 'pointer-events-auto');
+            document.getElementById('loadingContent').classList.remove('hidden');
+            document.getElementById('errorBox').classList.add('hidden');
+
+            const loadTextureWithFallback = (url, isFallback = false) => {
+                const loader = new THREE.TextureLoader();
+                
+                if (!url.startsWith('blob:') && !url.startsWith('data:')) {
+                    loader.setCrossOrigin('anonymous');
+                }
+                
+                loader.load(
+                    url, 
+                    (t) => { 
+                        sphere.material.map = t; 
+                        sphere.material.needsUpdate = true; 
+                        
+                        setTimeout(() => {
+                            document.getElementById('loadingOverlay').classList.remove('opacity-100', 'pointer-events-auto');
+                            document.getElementById('loadingOverlay').classList.add('opacity-0', 'pointer-events-none');
+                        }, 500);
+                    },
+                    undefined,
+                    (err) => {
+                        if (!isFallback && !url.startsWith('blob:') && !url.startsWith('data:')) {
+                            console.warn("Direct load failed. Trying CORS proxy...");
+                            const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+                            loadTextureWithFallback(proxyUrl, true);
+                        } else {
+                            console.error("CORS load block detected:", err);
+                            document.getElementById('loadingContent').classList.add('hidden');
+                            document.getElementById('errorBox').classList.remove('hidden');
+                        }
+                    }
+                );
+            };
+            
+            loadTextureWithFallback(s.imageSrc);
+            
+            document.getElementById('overlay').innerHTML = ''; document.getElementById('transitContainer').classList.add('hidden'); closeP();
+            s.hotspots.forEach((h, i) => {
+                const div = document.createElement('div'); div.className = 'hotspot'; div.id = 'h'+i; div.innerHTML = 'i';
+                div.style.pointerEvents = 'auto';
+                div.onclick = (e) => { e.stopPropagation(); div.classList.add('visited'); vis.add(i); showP(h); if (s.transitConfig && vis.size === s.hotspots.length && cur === max) document.getElementById('transitContainer').classList.remove('hidden'); };
+                document.getElementById('overlay').appendChild(div);
+            });
+            if ((!s.transitConfig || s.hotspots.length === 0) && cur === max && cur < scenes.length - 1) document.getElementById('transitContainer').classList.remove('hidden');
+            renderMenu();
+        }
+
+        function showP(h) {
+            document.getElementById('pTitle').textContent = h.title; document.getElementById('pDesc').textContent = h.desc;
+            const vid = document.getElementById('pVid'); const yt = h.videoUrl.match(/(?:youtu\\.be\\/|youtube\\.com\\/(?:embed\\/|v\\/|watch\\?v=))([\\w-]{11})/);
+            if(yt) { vid.src = 'https://www.youtube.com/embed/'+yt[1]; vid.classList.remove('hidden'); } else { vid.src = ''; vid.classList.add('hidden'); }
+            
+            const tBtn = document.getElementById('pTransitBtn');
+            if (h.targetSceneId) {
+                const targetIdx = scenes.findIndex(s => s.id === h.targetSceneId);
+                if (targetIdx !== -1) {
+                    tBtn.textContent = 'Travel to: ' + scenes[targetIdx].title;
+                    tBtn.classList.remove('hidden');
+                    tBtn.onclick = () => {
+                        closeP();
+                        
+                        const fade = document.getElementById('fadeOverlay');
+                        fade.classList.remove('opacity-0', 'pointer-events-none');
+                        fade.classList.add('opacity-100', 'pointer-events-auto');
+                        
+                        const origFov = camera.fov;
+                        const zInt = setInterval(() => {
+                            camera.fov -= 1.5; if(camera.fov < 10) camera.fov = 10;
+                            camera.updateProjectionMatrix();
+                        }, 16);
+
+                        setTimeout(() => {
+                            clearInterval(zInt);
+                            camera.fov = origFov; camera.updateProjectionMatrix();
+                            max = Math.max(max, targetIdx);
+                            load(targetIdx);
+                            setTimeout(() => {
+                                fade.classList.remove('opacity-100', 'pointer-events-auto');
+                                fade.classList.add('opacity-0', 'pointer-events-none');
+                            }, 100);
+                        }, 500);
+                    };
+                } else tBtn.classList.add('hidden');
+            } else tBtn.classList.add('hidden');
+
+            document.getElementById('popup').classList.remove('hidden');
+        }
+
+        function closeP() { document.getElementById('popup').classList.add('hidden'); document.getElementById('pVid').src = ''; }
+
+        function renderMenu() {
+            const links = document.getElementById('sceneLinks'); links.innerHTML = '';
+            scenes.forEach((s, i) => { const b = document.createElement('button'); b.className = 'w-full text-left p-2 rounded ' + (i === cur ? 'bg-indigo-50 font-bold' : (i <= max ? 'hover:bg-slate-100' : 'opacity-50')); b.textContent = (i+1)+'. '+s.title; if(i <= max) b.onclick = () => { load(i); document.getElementById('menuPanel').classList.add('hidden'); }; links.appendChild(b); });
+        }
+
+        document.getElementById('menuBtn').onclick = () => document.getElementById('menuPanel').classList.toggle('hidden');
+        document.getElementById('transitTrigger').onclick = () => { const s = scenes[cur]; if (s.transitConfig) { document.getElementById('qText').textContent = s.transitConfig.question; document.getElementById('qAns').value = ''; document.getElementById('quiz').classList.remove('hidden'); } else if (cur < scenes.length-1) { document.getElementById('transitContainer').classList.add('hidden'); max = Math.max(max, cur+1); load(cur+1); } };
+        document.getElementById('qSub').onclick = () => { const s = scenes[cur]; if (document.getElementById('qAns').value.trim().toLowerCase() === s.transitConfig.answer.toLowerCase()) { document.getElementById('quiz').classList.add('hidden'); document.getElementById('transitContainer').classList.add('hidden'); if (cur < scenes.length-1) { max = Math.max(max, cur+1); load(cur+1); } else alert("Done!"); } };
+        
+        function animate() { requestAnimationFrame(animate); const phi = THREE.MathUtils.degToRad(90 - lat), theta = THREE.MathUtils.degToRad(lon); camera.lookAt(new THREE.Vector3(500 * Math.sin(phi) * Math.cos(theta), 500 * Math.cos(phi), 500 * Math.sin(phi) * Math.sin(theta))); renderer.render(scene, camera); const s = scenes[cur]; s.hotspots.forEach((h, i) => { const div = document.getElementById('h'+i); if (!div) return; const v = new THREE.Vector3(h.pos.x, h.pos.y, h.pos.z).project(camera); if(v.z < 1) { div.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px'; div.style.top = (v.y * -0.5 + 0.5) * window.innerHeight + 'px'; div.style.display = 'flex'; } else div.style.display = 'none'; }); }
+        init();
+    <\/script>
+</body>
+</html>`;
+            const blob = new Blob([exportHtml], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = '360-tour.html'; a.click();
+        };
+
+        // --- Gemini AI Features ---
+        document.getElementById('aiHotspotBtn').onclick = async () => {
+            const title = document.getElementById('hsTitle').value.trim();
+            const s = scenes.find(sc => sc.id === activeSceneId);
+            const sceneTitle = s ? s.title : "a virtual tour";
+            
+            if (!title) {
+                setStatus("Please enter a Title first so I know what to write about!", "error");
+                document.getElementById('hsTitle').classList.add('border-red-500');
+                return;
+            }
+            document.getElementById('hsTitle').classList.remove('border-red-500');
+            
+            setStatus("✨ AI is writing a description...", "info");
+            document.getElementById('hsDesc').value = "Generating...";
+            
+            const prompt = `Write a short, engaging 2-sentence educational description for a virtual tour hotspot about "${title}" within the scene "${sceneTitle}". Keep it suitable for students viewing a 360 tour. Don't use quotes around the output.`;
+            const text = await callGemini(prompt);
+            
+            if (text) {
+                document.getElementById('hsDesc').value = text;
+                setStatus("✨ Description generated!", "success");
+            } else {
+                document.getElementById('hsDesc').value = "";
+                setStatus("Failed to generate content. Check console or try again.", "error");
+            }
+        };
+
+        document.getElementById('aiQuizBtn').onclick = async () => {
+            const s = scenes.find(sc => sc.id === activeSceneId);
+            if (!s || !s.hotspots || s.hotspots.length === 0) {
+                setStatus("Add some hotspots first so the AI has context for the quiz!", "error");
+                return;
+            }
+            
+            setStatus("✨ AI is generating a challenge...", "info");
+            
+            const contextData = s.hotspots.map(h => `${h.title}: ${h.desc}`).join("\n");
+            const prompt = `Based on the following information found in a virtual tour scene:\n${contextData}\n\nGenerate a single, simple trivia question for students to answer before they can proceed. The answer MUST be 1 to 3 words maximum.\n\nReturn ONLY a valid JSON object matching this schema exactly:\n{\n  "question": "The trivia question here",\n  "answer": "The short answer here"\n}`;
+            
+            const result = await callGemini(prompt, true);
+            if (result && result.question && result.answer) {
+                document.getElementById('configTransitQuestion').value = result.question;
+                document.getElementById('configTransitAnswer').value = result.answer;
+                setStatus("✨ Challenge generated based on your hotspots!", "success");
+            } else {
+                setStatus("Failed to generate challenge. Try again.", "error");
+            }
+        };
+
+        initThree();
+        switchScene(null);
     </script>
 </body>
 </html>
