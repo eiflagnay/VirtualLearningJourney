@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Learning Journey</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse-blue { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
+        @keyframes bounce-slow { 0%, 100% { transform: translateY(0) translateX(-50%); } 50% { transform: translateY(-10px) translateX(-50%); } }
+        .hotspot-marker { animation: pulse-blue 2s infinite; transition: transform 0.2s; }
+        .hotspot-marker:hover { transform: scale(1.1); }
+        .hotspot-marker.visited { background-color: #10b981; border-color: #fff; animation: none; }
+        .no-select { user-select: none; -webkit-user-select: none; }
+        .transit-animate { animation: bounce-slow 2s infinite; left: 50%; }
+        
+        #floatingMenu { position: fixed; bottom: 30px; right: 30px; z-index: 50; touch-action: none; }
+        .dragging { opacity: 0.8; cursor: grabbing !important; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
+
+    <header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30 px-6 h-16 flex items-center">
+        <h2 id="currentSceneTitle" class="text-xl font-bold text-slate-800">Loading...</h2>
+    </header>
+
+    <main class="flex-grow p-6 flex flex-col items-center max-w-6xl mx-auto w-full relative pb-24">
+        
+        <div id="completionBanner" class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6 rounded-r-md w-full flex justify-between items-center text-yellow-800 shadow-sm hidden">
+            <div class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+                <span class="font-bold">Journey Complete! You have successfully finished all scenes.</span>
+            </div>
+        </div>
+
+        <div class="relative w-full bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden" id="imageContainerWrapper">
+            <img id="mainImage" src="" class="w-full h-auto block no-select" draggable="false">
+            <div id="hotspotContainer" class="absolute top-0 left-0 w-full h-full pointer-events-auto"></div>
+            
+            <div id="transitBtnContainer" class="absolute bottom-8 transit-animate hidden z-40">
+                <button id="transitTriggerBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-full font-bold shadow-2xl flex items-center gap-2 transition-transform hover:scale-105 border-4 border-white">
+                    <span id="transitBtnText">Unlock Next Scene</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Draggable Floating Menu -->
+    <div id="floatingMenu">
+        <!-- The Menu Panel -->
+        <div id="fabPanel" class="bg-white rounded-xl shadow-2xl border border-slate-200 w-64 mb-4 hidden absolute bottom-full right-0 transition-opacity">
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-emerald-600 text-white rounded-t-xl">
+                <h3 class="font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"></path></svg>
+                    Journey Map
+                </h3>
+            </div>
+            <div id="studentSceneList" class="max-h-60 overflow-y-auto p-2 space-y-1">
+                <!-- Scenes injected here -->
+            </div>
+        </div>
+        
+        <!-- The Draggable Button -->
+        <button id="fabBtn" class="w-16 h-16 bg-emerald-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-emerald-700 transition-colors cursor-pointer border-4 border-white focus:outline-none" title="Drag Map, Click to Open">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+        </button>
+    </div>
+
+    <!-- Hotspot Information Popup -->
+    <div id="infoPopup" class="absolute bg-white rounded-lg shadow-xl border border-slate-200 w-80 hidden z-40 transition-opacity duration-200 opacity-0 transform -translate-x-1/2">
+        <div class="p-4 relative">
+            <button id="closePopupBtn" class="absolute top-2 right-2 text-slate-400 hover:text-slate-600"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            <h4 id="popupTitle" class="font-bold text-lg text-slate-800 mb-2 pr-6"></h4>
+            <div id="popupVideoContainer" class="hidden mb-3 rounded overflow-hidden bg-slate-100">
+                <iframe id="popupVideo" class="w-full aspect-video" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+            <p id="popupDesc" class="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap"></p>
+        </div>
+        <div class="absolute w-4 h-4 bg-white border-b border-r border-slate-200 transform rotate-45 left-1/2 -ml-2 -bottom-2"></div>
+    </div>
+
+    <!-- Quiz Modal for Transit -->
+    <div id="quizModal" class="fixed inset-0 bg-slate-900 bg-opacity-80 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full border-t-4 border-purple-500">
+            <div class="flex items-center gap-3 mb-4 text-purple-600">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                <h3 class="text-xl font-bold text-slate-800">Transit Challenge</h3>
+            </div>
+            <p id="quizQuestion" class="text-slate-700 mb-4 font-medium leading-relaxed"></p>
+            <input type="text" id="quizAnswer" class="w-full border border-slate-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 rounded-md p-3 mb-2 outline-none transition-all" placeholder="Type your answer here...">
+            <p id="quizError" class="text-red-500 text-sm hidden mb-4 font-medium flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Incorrect answer, please try again.</p>
+            <div class="flex justify-end gap-3 mt-6">
+                <button id="closeQuizBtn" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-md font-medium transition-colors">Cancel</button>
+                <button id="submitQuizBtn" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 font-medium transition-colors shadow-sm">Submit Answer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const scenes = ${JSON.stringify(scenes)};
+        ${getEmbedUrl.toString()}
+        
+        let currentSceneIndex = 0;
+        let maxUnlockedIndex = 0;
+        let visitedHotspots = new Set();
+        
+        // Draggable FAB Logic inside exported app
+        const fab = document.getElementById('floatingMenu');
+        const fabBtn = document.getElementById('fabBtn');
+        const fabPanel = document.getElementById('fabPanel');
+        let isDragging = false;
+        let initialX, initialY, currentX = 0, currentY = 0, xOffset = 0, yOffset = 0;
+
+        fabBtn.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
+        fabBtn.addEventListener('touchstart', dragStart, {passive: false});
+        document.addEventListener('touchmove', drag, {passive: false});
+        document.addEventListener('touchend', dragEnd);
+
+        function dragStart(e) {
+            if (e.type === 'touchstart') { initialX = e.touches[0].clientX - xOffset; initialY = e.touches[0].clientY - yOffset; } 
+            else { initialX = e.clientX - xOffset; initialY = e.clientY - yOffset; }
+            isDragging = false;
+        }
+
+        function drag(e) {
+            if (initialX === undefined) return;
+            let clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+            let clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+
+            if (Math.abs(clientX - initialX - xOffset) > 5 || Math.abs(clientY - initialY - yOffset) > 5) {
+                isDragging = true; fab.classList.add('dragging');
+            }
+
+            if (isDragging) {
+                e.preventDefault();
+                currentX = clientX - initialX; currentY = clientY - initialY;
+                xOffset = currentX; yOffset = currentY;
+                fab.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+            }
+        }
+        function dragEnd() { initialX = undefined; initialY = undefined; fab.classList.remove('dragging'); }
+        
+        fabBtn.addEventListener('click', (e) => {
+            if (isDragging) { e.preventDefault(); return; }
+            fabPanel.classList.toggle('hidden');
+        });
+
+        // App Logic
+        const studentSceneList = document.getElementById('studentSceneList');
+        const hotspotContainer = document.getElementById('hotspotContainer');
+        const infoPopup = document.getElementById('infoPopup');
+        const popupTitle = document.getElementById('popupTitle');
+        const popupDesc = document.getElementById('popupDesc');
+        const imageContainerWrapper = document.getElementById('imageContainerWrapper');
+        const transitBtnContainer = document.getElementById('transitBtnContainer');
+
+        function initApp() { renderFloatingMenu(); loadScene(0); }
+
+        function renderFloatingMenu() {
+            studentSceneList.innerHTML = '';
+            scenes.forEach((scene, i) => {
+                const isUnlocked = i <= maxUnlockedIndex;
+                const isActive = i === currentSceneIndex;
+                
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left px-3 py-2 rounded mb-1 text-sm font-medium transition-all flex items-center justify-between ${
+                    isActive ? 'bg-emerald-100 text-emerald-800' : 
+                    isUnlocked ? 'text-slate-700 hover:bg-slate-100' : 
+                    'text-slate-400 opacity-60 cursor-not-allowed'
+                }`;
+                
+                let iconHtml = '';
+                if (!isUnlocked) iconHtml = '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
+                else if (isActive) iconHtml = '<div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>';
+
+                btn.innerHTML = `<span class="truncate pr-2">${i + 1}. ${scene.title}</span>${iconHtml}`;
+                if (isUnlocked) btn.onclick = () => { loadScene(i); fabPanel.classList.add('hidden'); };
+                studentSceneList.appendChild(btn);
+            });
+        }
+
+        function loadScene(index) {
+            currentSceneIndex = index;
+            visitedHotspots.clear();
+            const scene = scenes[index];
+            
+            document.getElementById('currentSceneTitle').textContent = `Scene ${index + 1}: ${scene.title}`;
+            document.getElementById('mainImage').src = scene.imageSrc;
+            transitBtnContainer.classList.add('hidden');
+            closePopup();
+            renderFloatingMenu();
+            
+            if (index === scenes.length - 1 && maxUnlockedIndex >= scenes.length - 1) document.getElementById('completionBanner').classList.remove('hidden');
+            if (index === scenes.length - 1) document.getElementById('transitBtnText').textContent = "Complete Journey";
+            else document.getElementById('transitBtnText').textContent = "Unlock Next Scene";
+
+            hotspotContainer.innerHTML = '';
+            scene.hotspots.forEach((hs, hsIndex) => {
+                const marker = document.createElement('div');
+                marker.className = 'hotspot-marker absolute w-8 h-8 -ml-4 -mt-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-pointer flex items-center justify-center text-white z-10';
+                marker.style.left = hs.x + '%'; marker.style.top = hs.y + '%';
+                marker.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+                
+                marker.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    marker.classList.add('visited');
+                    marker.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+                    
+                    visitedHotspots.add(hsIndex);
+                    if (scene.transitConfig && visitedHotspots.size === scene.hotspots.length) transitBtnContainer.classList.remove('hidden');
+
+                    popupTitle.textContent = hs.title; popupDesc.textContent = hs.desc;
+                    const videoContainer = document.getElementById('popupVideoContainer');
+                    const videoIframe = document.getElementById('popupVideo');
+                    const embedUrl = getEmbedUrl(hs.videoUrl);
+                    if (embedUrl) { videoIframe.src = embedUrl; videoContainer.classList.remove('hidden'); } 
+                    else { videoIframe.src = ''; videoContainer.classList.add('hidden'); }
+                    
+                    infoPopup.classList.remove('hidden');
+                    const wrapperRect = imageContainerWrapper.getBoundingClientRect();
+                    const markerRect = marker.getBoundingClientRect();
+                    const popupTop = markerRect.top - wrapperRect.top - infoPopup.offsetHeight - 10; 
+                    const popupLeft = markerRect.left - wrapperRect.left + (markerRect.width / 2);
+                    infoPopup.style.top = popupTop + 'px'; infoPopup.style.left = popupLeft + 'px';
+                    imageContainerWrapper.appendChild(infoPopup);
+                    
+                    setTimeout(() => { infoPopup.classList.remove('opacity-0'); infoPopup.classList.add('opacity-100'); }, 10);
+                });
+                hotspotContainer.appendChild(marker);
+            });
+            
+            if (scene.transitConfig && scene.hotspots.length === 0) transitBtnContainer.classList.remove('hidden');
+        }
+
+        function closePopup() {
+            infoPopup.classList.remove('opacity-100'); infoPopup.classList.add('opacity-0');
+            setTimeout(() => { infoPopup.classList.add('hidden'); document.getElementById('popupVideo').src = ''; }, 200);
+        }
+
+        document.getElementById('closePopupBtn').addEventListener('click', closePopup);
+        document.addEventListener('click', (e) => {
+            if (!infoPopup.classList.contains('hidden') && !infoPopup.contains(e.target) && !e.target.closest('.hotspot-marker')) closePopup();
+            if (!fab.contains(e.target) && !fabPanel.classList.contains('hidden')) fabPanel.classList.add('hidden');
+        });
+
+        // Transit Quiz Logic
+        const quizModal = document.getElementById('quizModal');
+        document.getElementById('transitTriggerBtn').addEventListener('click', () => {
+            const scene = scenes[currentSceneIndex];
+            if(!scene.transitConfig) return;
+            document.getElementById('quizQuestion').textContent = scene.transitConfig.question;
+            document.getElementById('quizAnswer').value = '';
+            document.getElementById('quizError').classList.add('hidden');
+            document.getElementById('quizAnswer').classList.remove('border-red-500');
+            quizModal.classList.remove('hidden');
+            setTimeout(() => document.getElementById('quizAnswer').focus(), 100);
+        });
+        
+        document.getElementById('closeQuizBtn').addEventListener('click', () => quizModal.classList.add('hidden'));
+
+        document.getElementById('submitQuizBtn').addEventListener('click', () => {
+            const scene = scenes[currentSceneIndex];
+            const userAns = document.getElementById('quizAnswer').value.trim().toLowerCase();
+            const correctAns = scene.transitConfig.answer.trim().toLowerCase();
+            
+            if (userAns === correctAns) {
+                quizModal.classList.add('hidden');
+                if (currentSceneIndex === maxUnlockedIndex && currentSceneIndex < scenes.length - 1) maxUnlockedIndex++;
+                if (currentSceneIndex < scenes.length - 1) loadScene(currentSceneIndex + 1);
+                else { transitBtnContainer.classList.add('hidden'); document.getElementById('completionBanner').classList.remove('hidden'); window.scrollTo(0,0); }
+            } else {
+                document.getElementById('quizError').classList.remove('hidden');
+                document.getElementById('quizAnswer').classList.add('border-red-500');
+            }
+        });
+
+        document.getElementById('quizAnswer').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('submitQuizBtn').click(); });
+
+        initApp();
+    </script>
+</body>
+</html>
