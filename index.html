@@ -50,6 +50,11 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
                     Transit Logic
                 </button>
+                <button id="importBtn" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md font-bold transition-colors text-sm flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    Import
+                </button>
+                <input type="file" id="importFile" class="hidden" accept=".html">
                 <button id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-bold transition-colors text-sm flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     Export App
@@ -129,13 +134,13 @@
     </div>
 
     <!-- Info Popup -->
-    <div id="infoPopup" class="absolute bg-white rounded-lg shadow-xl border border-slate-200 w-80 hidden z-40 p-4 transition-all opacity-0 -translate-x-1/2 pointer-events-auto">
-        <button id="closePopupBtn" class="absolute top-2 right-2 text-slate-400">✕</button>
-        <h4 id="popupTitle" class="font-bold text-lg mb-2 pr-6"></h4>
-        <iframe id="popupVideo" class="w-full aspect-video hidden mb-3 rounded" frameborder="0" allowfullscreen></iframe>
-        <p id="popupDesc" class="text-sm text-slate-600 leading-relaxed mb-4"></p>
+    <div id="infoPopup" class="absolute bg-white rounded-lg shadow-xl border border-slate-200 w-[90vw] max-w-lg hidden z-40 p-5 transition-all opacity-0 -translate-x-1/2 pointer-events-auto">
+        <button id="closePopupBtn" class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+        <h4 id="popupTitle" class="font-bold text-xl mb-3 pr-6"></h4>
+        <iframe id="popupVideo" class="w-full aspect-video hidden mb-4 rounded-md shadow-sm" frameborder="0" allowfullscreen></iframe>
+        <p id="popupDesc" class="text-base text-slate-600 leading-relaxed mb-5"></p>
         
-        <button id="popupTransitBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded text-sm font-bold mb-2 hidden transition-colors shadow-sm">Travel Here</button>
+        <button id="popupTransitBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg text-base font-bold mb-2 hidden transition-colors shadow-sm">Travel Here</button>
     </div>
 
     <!-- Hotspot Form Modal -->
@@ -278,7 +283,7 @@
                         <li>Upload and link 360° panoramas</li>
                         <li>Interactive hotspots with text, video, and portals</li>
                         <li>Linear quiz checkpoints (Transit Logic)</li>
-                        <li>✨ Gemini AI integration for auto-filling content and generating challenges (WIP)</li>
+                        <li>✨ Gemini AI integration for auto-filling content and generating challenges</li>
                         <li>1-Click Export to a standalone HTML file</li>
                     </ul>
                 </div>
@@ -313,6 +318,7 @@
         let isEditMode = true;
         let pendingHotspotPos = null;
         let currentEditingIndex = null;
+        let activePopupIndex = null;
         let visitedHotspots = new Set();
         let unlockedScenesInBuilder = new Set();
         
@@ -564,6 +570,20 @@
                     marker.style.display = 'none';
                 }
             });
+
+            // Dynamic popup anchoring
+            const p = document.getElementById('infoPopup');
+            if (activePopupIndex !== null && !p.classList.contains('hidden')) {
+                const activeMarker = document.getElementById(`marker-${activePopupIndex}`);
+                if (activeMarker && activeMarker.style.display !== 'none') {
+                    const rect = activeMarker.getBoundingClientRect();
+                    p.style.top = (rect.top + window.scrollY - p.offsetHeight - 15) + 'px';
+                    p.style.left = (rect.left + window.scrollX + rect.width / 2) + 'px';
+                    p.style.visibility = 'visible';
+                } else {
+                    p.style.visibility = 'hidden';
+                }
+            }
         }
 
         // --- Logic ---
@@ -640,6 +660,13 @@
                     (texture) => {
                         sphere.material.map = texture;
                         sphere.material.needsUpdate = true;
+                        
+                        // Fade in smoothly ONLY AFTER the new texture is fully applied
+                        const overlay = document.getElementById('transitionOverlay');
+                        if (overlay && overlay.classList.contains('opacity-100')) {
+                            overlay.classList.remove('opacity-100', 'pointer-events-auto');
+                            overlay.classList.add('opacity-0', 'pointer-events-none');
+                        }
                     },
                     undefined,
                     (err) => {
@@ -708,6 +735,7 @@
 
         function openPopup(hs, idx) {
             currentEditingIndex = idx;
+            activePopupIndex = idx;
             document.getElementById('popupTitle').textContent = hs.title;
             document.getElementById('popupDesc').textContent = hs.desc;
             const vid = document.getElementById('popupVideo');
@@ -729,22 +757,22 @@
                         overlay.classList.add('opacity-100', 'pointer-events-auto');
                         
                         const originalFov = camera.fov;
-                        const zoomInt = setInterval(() => {
-                            camera.fov -= 1.5; 
-                            if(camera.fov < 10) camera.fov = 10;
+                        let zoomFrame;
+                        
+                        // Smooth hardware-accelerated ease-in zoom
+                        const zoomStep = () => {
+                            camera.fov -= (camera.fov - 20) * 0.1;
                             camera.updateProjectionMatrix();
-                        }, 16);
+                            zoomFrame = requestAnimationFrame(zoomStep);
+                        };
+                        zoomFrame = requestAnimationFrame(zoomStep);
 
+                        // Wait for black screen, then load the next scene
                         setTimeout(() => {
-                            clearInterval(zoomInt);
-                            camera.fov = originalFov;
+                            cancelAnimationFrame(zoomFrame);
+                            camera.fov = originalFov; // reset camera for the new scene
                             camera.updateProjectionMatrix();
                             switchScene(hs.targetSceneId);
-                            
-                            setTimeout(() => {
-                                overlay.classList.remove('opacity-100', 'pointer-events-auto');
-                                overlay.classList.add('opacity-0', 'pointer-events-none');
-                            }, 100);
                         }, 500);
                     };
                 } else {
@@ -756,19 +784,15 @@
 
             const p = document.getElementById('infoPopup');
             p.classList.remove('hidden');
-            
-            const marker = document.getElementById(`marker-${idx}`);
-            if (marker) {
-                const rect = marker.getBoundingClientRect();
-                p.style.top = (rect.top - p.offsetHeight - 20) + 'px';
-                p.style.left = rect.left + 'px';
-            }
+            updateHotspotMarkers(); // Instantly apply position
             setTimeout(() => { p.classList.remove('opacity-0'); p.classList.add('opacity-100'); }, 10);
         }
 
         function closePopup() {
+            activePopupIndex = null;
             const p = document.getElementById('infoPopup');
             p.classList.remove('opacity-100');
+            p.style.visibility = ''; // Reset visibility state
             setTimeout(() => { p.classList.add('hidden'); document.getElementById('popupVideo').src = ''; }, 200);
         }
 
@@ -808,6 +832,55 @@
 
         document.getElementById('welcomeCreateBtn').onclick = () => {
             triggerCreateScene();
+        };
+
+        // --- IMPORT TOUR FEATURE ---
+        document.getElementById('importBtn').onclick = () => {
+            document.getElementById('importFile').click();
+        };
+
+        document.getElementById('importFile').onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const content = event.target.result;
+                try {
+                    // Extract data from the exported template using regex
+                    const scenesMatch = content.match(/const scenes = (\[.*\]);/);
+                    const introMatch = content.match(/const tourIntro = (\{.*\});/);
+
+                    if (scenesMatch && scenesMatch[1]) {
+                        scenes = JSON.parse(scenesMatch[1]);
+                        
+                        if (introMatch && introMatch[1]) {
+                            tourIntro = JSON.parse(introMatch[1]);
+                        } else {
+                            tourIntro = { title: "Welcome to the Journey", desc: "Explore the environment and click on the information points to learn more!" };
+                        }
+                        
+                        // Reset editor state
+                        activeSceneId = null;
+                        currentEditingIndex = null;
+                        pendingHotspotPos = null;
+                        visitedHotspots.clear();
+                        unlockedScenesInBuilder.clear();
+                        
+                        setStatus("Tour imported successfully!", "success");
+                        switchScene(scenes.length > 0 ? scenes[0].id : null);
+                    } else {
+                        setStatus("Invalid file format. Could not find tour data.", "error");
+                    }
+                } catch (err) {
+                    console.error("Import error:", err);
+                    setStatus("Error parsing the imported file.", "error");
+                }
+                
+                // Reset input so the same file can be selected again
+                e.target.value = '';
+            };
+            reader.readAsText(file);
         };
 
         document.getElementById('uploadBox').onclick = () => {
@@ -1084,12 +1157,12 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
         </button>
     </div>
-    <div id="popup" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-xl shadow-2xl hidden w-80 max-w-[90vw] z-[200]">
-        <button onclick="closeP()" class="absolute top-2 right-2 text-slate-400">✕</button>
-        <h2 id="pTitle" class="font-bold text-xl mb-2"></h2>
-        <iframe id="pVid" class="w-full aspect-video hidden mb-3 rounded" frameborder="0" allowfullscreen></iframe>
-        <p id="pDesc" class="text-slate-600 text-sm leading-relaxed mb-4"></p>
-        <button id="pTransitBtn" class="w-full bg-purple-600 text-white py-2 rounded text-sm font-bold mb-2 hidden shadow-sm">Travel Here</button>
+    <div id="popup" class="absolute -translate-x-1/2 bg-white p-6 rounded-xl shadow-2xl hidden w-[90vw] max-w-lg z-[200]">
+        <button onclick="closeP()" class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 text-xl font-bold">✕</button>
+        <h2 id="pTitle" class="font-bold text-2xl mb-3"></h2>
+        <iframe id="pVid" class="w-full aspect-video hidden mb-4 rounded-md shadow-sm" frameborder="0" allowfullscreen></iframe>
+        <p id="pDesc" class="text-slate-600 text-base leading-relaxed mb-5"></p>
+        <button id="pTransitBtn" class="w-full bg-purple-600 text-white py-3 rounded-lg text-base font-bold mb-2 hidden shadow-sm">Travel Here</button>
     </div>
     <div id="quiz" class="fixed inset-0 bg-slate-900/90 hidden z-[300] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl p-6 max-w-md w-full border-t-4 border-purple-500">
@@ -1104,6 +1177,7 @@
         const tourIntro = ${JSON.stringify(tourIntro)};
         let cur = 0, max = 0, lon = 0, lat = 0;
         let scene, camera, renderer, sphere, vis = new Set();
+        let activeP = null;
         
         function getPtr(e) {
             if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -1187,9 +1261,17 @@
                         sphere.material.needsUpdate = true; 
                         
                         setTimeout(() => {
+                            // Fade out loading spinner
                             document.getElementById('loadingOverlay').classList.remove('opacity-100', 'pointer-events-auto');
                             document.getElementById('loadingOverlay').classList.add('opacity-0', 'pointer-events-none');
-                        }, 500);
+                            
+                            // Fade out portal overlay smoothly ONLY AFTER image is loaded
+                            const fade = document.getElementById('fadeOverlay');
+                            if (fade && fade.classList.contains('opacity-100')) {
+                                fade.classList.remove('opacity-100', 'pointer-events-auto');
+                                fade.classList.add('opacity-0', 'pointer-events-none');
+                            }
+                        }, 250);
                     },
                     undefined,
                     (err) => {
@@ -1212,14 +1294,15 @@
             s.hotspots.forEach((h, i) => {
                 const div = document.createElement('div'); div.className = 'hotspot'; div.id = 'h'+i; div.innerHTML = 'i';
                 div.style.pointerEvents = 'auto';
-                div.onclick = (e) => { e.stopPropagation(); div.classList.add('visited'); vis.add(i); showP(h); if (s.transitConfig && vis.size === s.hotspots.length && cur === max) document.getElementById('transitContainer').classList.remove('hidden'); };
+                div.onclick = (e) => { e.stopPropagation(); div.classList.add('visited'); vis.add(i); showP(h, i); if (s.transitConfig && vis.size === s.hotspots.length && cur === max) document.getElementById('transitContainer').classList.remove('hidden'); };
                 document.getElementById('overlay').appendChild(div);
             });
             if ((!s.transitConfig || s.hotspots.length === 0) && cur === max && cur < scenes.length - 1) document.getElementById('transitContainer').classList.remove('hidden');
             renderMenu();
         }
 
-        function showP(h) {
+        function showP(h, idx) {
+            activeP = idx;
             document.getElementById('pTitle').textContent = h.title; document.getElementById('pDesc').textContent = h.desc;
             const vid = document.getElementById('pVid'); const yt = h.videoUrl.match(/(?:youtu\\.be\\/|youtube\\.com\\/(?:embed\\/|v\\/|watch\\?v=))([\\w-]{11})/);
             if(yt) { vid.src = 'https://www.youtube.com/embed/'+yt[1]; vid.classList.remove('hidden'); } else { vid.src = ''; vid.classList.add('hidden'); }
@@ -1238,20 +1321,22 @@
                         fade.classList.add('opacity-100', 'pointer-events-auto');
                         
                         const origFov = camera.fov;
-                        const zInt = setInterval(() => {
-                            camera.fov -= 1.5; if(camera.fov < 10) camera.fov = 10;
+                        let zFrame;
+                        
+                        // Smooth hardware-accelerated ease-in zoom
+                        const zStep = () => {
+                            camera.fov -= (camera.fov - 20) * 0.1;
                             camera.updateProjectionMatrix();
-                        }, 16);
+                            zFrame = requestAnimationFrame(zStep);
+                        };
+                        zFrame = requestAnimationFrame(zStep);
 
+                        // Wait for black screen, then begin downloading next scene
                         setTimeout(() => {
-                            clearInterval(zInt);
+                            cancelAnimationFrame(zFrame);
                             camera.fov = origFov; camera.updateProjectionMatrix();
                             max = Math.max(max, targetIdx);
                             load(targetIdx);
-                            setTimeout(() => {
-                                fade.classList.remove('opacity-100', 'pointer-events-auto');
-                                fade.classList.add('opacity-0', 'pointer-events-none');
-                            }, 100);
                         }, 500);
                     };
                 } else tBtn.classList.add('hidden');
@@ -1260,7 +1345,13 @@
             document.getElementById('popup').classList.remove('hidden');
         }
 
-        function closeP() { document.getElementById('popup').classList.add('hidden'); document.getElementById('pVid').src = ''; }
+        function closeP() { 
+            activeP = null;
+            const p = document.getElementById('popup');
+            p.style.visibility = '';
+            p.classList.add('hidden'); 
+            document.getElementById('pVid').src = ''; 
+        }
 
         function renderMenu() {
             const links = document.getElementById('sceneLinks'); links.innerHTML = '';
@@ -1271,7 +1362,36 @@
         document.getElementById('transitTrigger').onclick = () => { const s = scenes[cur]; if (s.transitConfig) { document.getElementById('qText').textContent = s.transitConfig.question; document.getElementById('qAns').value = ''; document.getElementById('quiz').classList.remove('hidden'); } else if (cur < scenes.length-1) { document.getElementById('transitContainer').classList.add('hidden'); max = Math.max(max, cur+1); load(cur+1); } };
         document.getElementById('qSub').onclick = () => { const s = scenes[cur]; if (document.getElementById('qAns').value.trim().toLowerCase() === s.transitConfig.answer.toLowerCase()) { document.getElementById('quiz').classList.add('hidden'); document.getElementById('transitContainer').classList.add('hidden'); if (cur < scenes.length-1) { max = Math.max(max, cur+1); load(cur+1); } else alert("Done!"); } };
         
-        function animate() { requestAnimationFrame(animate); const phi = THREE.MathUtils.degToRad(90 - lat), theta = THREE.MathUtils.degToRad(lon); camera.lookAt(new THREE.Vector3(500 * Math.sin(phi) * Math.cos(theta), 500 * Math.cos(phi), 500 * Math.sin(phi) * Math.sin(theta))); renderer.render(scene, camera); const s = scenes[cur]; s.hotspots.forEach((h, i) => { const div = document.getElementById('h'+i); if (!div) return; const v = new THREE.Vector3(h.pos.x, h.pos.y, h.pos.z).project(camera); if(v.z < 1) { div.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px'; div.style.top = (v.y * -0.5 + 0.5) * window.innerHeight + 'px'; div.style.display = 'flex'; } else div.style.display = 'none'; }); }
+        function animate() { 
+            requestAnimationFrame(animate); 
+            const phi = THREE.MathUtils.degToRad(90 - lat), theta = THREE.MathUtils.degToRad(lon); 
+            camera.lookAt(new THREE.Vector3(500 * Math.sin(phi) * Math.cos(theta), 500 * Math.cos(phi), 500 * Math.sin(phi) * Math.sin(theta))); 
+            renderer.render(scene, camera); 
+            const s = scenes[cur]; 
+            s.hotspots.forEach((h, i) => { 
+                const div = document.getElementById('h'+i); 
+                if (!div) return; 
+                const v = new THREE.Vector3(h.pos.x, h.pos.y, h.pos.z).project(camera); 
+                if(v.z < 1) { 
+                    div.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px'; 
+                    div.style.top = (v.y * -0.5 + 0.5) * window.innerHeight + 'px'; 
+                    div.style.display = 'flex'; 
+                } else div.style.display = 'none'; 
+            }); 
+            
+            // Dynamic popup anchoring for exported app
+            if (activeP !== null) {
+                const p = document.getElementById('popup');
+                const m = document.getElementById('h'+activeP);
+                if (m && m.style.display !== 'none') {
+                    p.style.left = m.style.left;
+                    p.style.top = (parseFloat(m.style.top) - p.offsetHeight - 15) + 'px';
+                    p.style.visibility = 'visible';
+                } else {
+                    p.style.visibility = 'hidden';
+                }
+            }
+        }
         init();
     <\/script>
 </body>
