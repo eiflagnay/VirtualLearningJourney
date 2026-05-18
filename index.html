@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>360° Learning Journey Builder</title>
+    <title>Virtual Learning Journey Builder</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body { margin: 0; overflow-x: hidden; }
@@ -30,13 +31,20 @@
                 <div class="bg-indigo-600 p-2 rounded-lg text-white">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
                 </div>
-                <h1 id="currentSceneTitleHeader" class="text-xl font-bold text-slate-800">360° Journey Builder</h1>
+                <h1 id="currentSceneTitleHeader" class="text-xl font-bold text-slate-800">Virtual Learning Journey Builder</h1>
             </div>
             
             <div class="flex items-center gap-3">
+                <button id="aboutBtn" class="text-slate-500 hover:text-indigo-600 transition-colors mr-2 focus:outline-none" title="About">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                </button>
                 <button id="toggleModeBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     Preview Mode
+                </button>
+                <button id="setupIntroBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    Tour Intro
                 </button>
                 <button id="setupTransitBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
@@ -58,13 +66,14 @@
             </div>
         </div>
 
+        <!-- Welcome / Empty State Landing Page -->
         <div id="welcomeSection" class="w-full max-w-xl mx-auto mt-12 bg-white rounded-2xl shadow-xl border border-slate-100 p-8 text-center transition-all">
             <div class="bg-indigo-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-600">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 002 2h1.5a1.5 1.5 0 001.5-1.5V9a2 2 0 00-2-2h-3c-.11 0-.22-.03-.3-.09l-1.83-1.42A2 2 0 0010.517 5H9.05M15 11.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
                 </svg>
             </div>
-            <h2 class="text-2xl font-bold text-slate-800 mb-3">Welcome to your 360° Journey Builder!</h2>
+            <h2 class="text-2xl font-bold text-slate-800 mb-3">Welcome to your Virtual Learning Journey Builder!</h2>
             <p class="text-slate-500 mb-8 leading-relaxed text-sm">
                 Create immersive, multi-scene interactive learning experiences. Add 360° panoramas, interactive hotspots with video and text, portal gates to jump between scenes, and linear quiz checkpoints with Gemini AI features!
             </p>
@@ -74,6 +83,7 @@
         </div>
 
         <div id="uploadSection" class="w-full max-w-2xl mt-10 hidden">
+            <!-- Upload Box -->
             <div id="uploadBox" class="border-2 border-dashed border-slate-300 rounded-xl bg-white p-12 text-center hover:bg-slate-50 transition-colors cursor-pointer">
                 <div class="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-500">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
@@ -102,6 +112,7 @@
         </div>
     </main>
 
+    <!-- Draggable Floating Menu -->
     <div id="floatingMenu">
         <div id="fabPanel" class="bg-white rounded-xl shadow-2xl border border-slate-200 w-64 mb-4 hidden absolute bottom-full right-0 transition-opacity">
             <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-800 text-white rounded-t-xl">
@@ -117,6 +128,7 @@
         </button>
     </div>
 
+    <!-- Info Popup -->
     <div id="infoPopup" class="absolute bg-white rounded-lg shadow-xl border border-slate-200 w-80 hidden z-40 p-4 transition-all opacity-0 -translate-x-1/2 pointer-events-auto">
         <button id="closePopupBtn" class="absolute top-2 right-2 text-slate-400">✕</button>
         <h4 id="popupTitle" class="font-bold text-lg mb-2 pr-6"></h4>
@@ -126,6 +138,7 @@
         <button id="popupTransitBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded text-sm font-bold mb-2 hidden transition-colors shadow-sm">Travel Here</button>
     </div>
 
+    <!-- Hotspot Form Modal -->
     <div id="hotspotModal" class="fixed inset-0 bg-slate-900 bg-opacity-75 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full">
             <h3 id="hotspotModalTitle" class="text-xl font-bold mb-4">Add Information Point</h3>
@@ -158,6 +171,32 @@
         </div>
     </div>
 
+    <!-- Intro Setup Modal -->
+    <div id="builderIntroModal" class="fixed inset-0 bg-slate-900 bg-opacity-75 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full">
+            <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                Tour Introduction
+            </h3>
+            <p class="text-sm text-slate-600 mb-4">Set a welcome message that students see before starting the journey.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Welcome Title</label>
+                    <input type="text" id="introTitle" class="w-full border border-slate-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="e.g., Welcome to the Science Lab!">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Instructions / Description</label>
+                    <textarea id="introDesc" rows="4" class="w-full border border-slate-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="e.g., Explore the room and click on the information points to learn..."></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
+                <button id="closeIntroBtn" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-md font-medium transition-colors">Cancel</button>
+                <button id="saveIntroBtn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium transition-colors">Save Intro</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transit Configuration Modal -->
     <div id="builderTransitModal" class="fixed inset-0 bg-slate-900 bg-opacity-75 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full">
             <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
@@ -188,6 +227,7 @@
         </div>
     </div>
 
+    <!-- Quiz Preview Modal -->
     <div id="builderQuizModal" class="fixed inset-0 bg-slate-900 bg-opacity-80 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full border-t-4 border-purple-500">
             <h3 class="text-xl font-bold text-slate-800 mb-4">Transit Challenge (Preview)</h3>
@@ -201,6 +241,7 @@
         </div>
     </div>
 
+    <!-- Custom Prompt Modal -->
     <div id="customPromptModal" class="fixed inset-0 bg-slate-900 bg-opacity-75 hidden z-[60] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full">
             <h3 id="customPromptTitle" class="text-xl font-bold text-slate-800 mb-4"></h3>
@@ -212,6 +253,7 @@
         </div>
     </div>
 
+    <!-- Custom Confirm Modal -->
     <div id="customConfirmModal" class="fixed inset-0 bg-slate-900 bg-opacity-75 hidden z-[60] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full">
             <h3 class="text-xl font-bold text-slate-800 mb-2">Confirm Action</h3>
@@ -223,6 +265,32 @@
         </div>
     </div>
 
+    <!-- About Modal -->
+    <div id="aboutModal" class="fixed inset-0 bg-slate-900 bg-opacity-75 hidden z-[70] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full relative">
+            <button id="closeAboutBtn" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 focus:outline-none">✕</button>
+            <h3 class="text-xl font-bold text-slate-800 mb-2">About Virtual Learning Journey Builder</h3>
+            <div class="text-sm text-slate-600 space-y-3 mb-6">
+                <p>A powerful, intuitive tool designed to create immersive, multi-scene interactive learning experiences without coding.</p>
+                <div>
+                    <strong class="text-slate-700">Key Features:</strong>
+                    <ul class="list-disc pl-5 mt-1 space-y-1">
+                        <li>Upload and link 360° panoramas</li>
+                        <li>Interactive hotspots with text, video, and portals</li>
+                        <li>Linear quiz checkpoints (Transit Logic)</li>
+                        <li>✨ Gemini AI integration for auto-filling content and generating challenges</li>
+                        <li>1-Click Export to a standalone HTML file</li>
+                    </ul>
+                </div>
+                <div class="pt-4 border-t border-slate-100 mt-4">
+                    <p class="font-medium text-slate-800 text-base">Developed by Mr Alfie Yang</p>
+                    <p class="mt-1">For bug reports or feedback, please email: <br><a href="mailto:alfie_yang@moe.edu.sg" class="text-indigo-600 hover:underline font-medium">alfie_yang@moe.edu.sg</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE AND APP LOGIC MODULE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
@@ -247,9 +315,11 @@
         let currentEditingIndex = null;
         let visitedHotspots = new Set();
         let unlockedScenesInBuilder = new Set();
+        
+        let tourIntro = { title: "Welcome to the Journey", desc: "Explore the environment and click on the information points to learn more!" };
 
         // --- Gemini API Setup ---
-        const apiKey = "";
+        const apiKey = "AIzaSyYourVeryLongSecretKeyGoesHere..."; // <-- Replace with your actual Gemini API Key!
 
         async function callGemini(prompt, isJson = false) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
@@ -281,7 +351,7 @@
                         break;
                     } catch (fetchErr) {
                         if (retries === 5) {
-                            setStatus("API Error after retries. Please try again.", "error");
+                            setStatus("API Error after retries. Please check your API Key.", "error");
                             return null;
                         }
                         await new Promise(r => setTimeout(r, delays[retries]));
@@ -367,7 +437,7 @@
         }
 
         function anyModalOpen() {
-            const modals = ['hotspotModal', 'builderTransitModal', 'builderQuizModal', 'customPromptModal', 'customConfirmModal'];
+            const modals = ['hotspotModal', 'builderTransitModal', 'builderQuizModal', 'builderIntroModal', 'customPromptModal', 'customConfirmModal', 'aboutModal'];
             return modals.some(id => !document.getElementById(id).classList.contains('hidden'));
         }
 
@@ -540,7 +610,7 @@
                 document.getElementById('workspaceSection').classList.add('hidden');
                 document.getElementById('uploadSection').classList.add('hidden');
                 document.getElementById('welcomeSection').classList.remove('hidden');
-                document.getElementById('currentSceneTitleHeader').textContent = "360° Journey Builder";
+                document.getElementById('currentSceneTitleHeader').textContent = "Virtual Learning Journey Builder";
                 renderFloatingMenu();
                 return;
             }
@@ -709,6 +779,14 @@
         }
 
         // --- Controls & Event Listeners ---
+        document.getElementById('aboutBtn').onclick = () => {
+            document.getElementById('aboutModal').classList.remove('hidden');
+        };
+
+        document.getElementById('closeAboutBtn').onclick = () => {
+            document.getElementById('aboutModal').classList.add('hidden');
+        };
+
         const fabBtn = document.getElementById('fabBtn');
         const fabPanel = document.getElementById('fabPanel');
         fabBtn.onclick = () => fabPanel.classList.toggle('hidden');
@@ -846,6 +924,25 @@
             switchScene(activeSceneId);
         };
 
+        // --- Setup Intro Controls ---
+        document.getElementById('setupIntroBtn').onclick = () => {
+            document.getElementById('introTitle').value = tourIntro.title || '';
+            document.getElementById('introDesc').value = tourIntro.desc || '';
+            document.getElementById('builderIntroModal').classList.remove('hidden');
+        };
+
+        document.getElementById('saveIntroBtn').onclick = () => {
+            tourIntro.title = document.getElementById('introTitle').value.trim();
+            tourIntro.desc = document.getElementById('introDesc').value.trim();
+            document.getElementById('builderIntroModal').classList.add('hidden');
+            setStatus("Tour intro saved.", "success");
+        };
+
+        document.getElementById('closeIntroBtn').onclick = () => {
+            document.getElementById('builderIntroModal').classList.add('hidden');
+        };
+
+        // --- Transit Logic Controls ---
         document.getElementById('setupTransitBtn').onclick = () => {
             const s = scenes.find(sc => sc.id === activeSceneId);
             if (!s) return;
@@ -903,6 +1000,7 @@
             document.getElementById('builderQuizModal').classList.add('hidden');
         };
 
+        // --- Export Logic ---
         document.getElementById('exportBtn').onclick = () => {
             if (!scenes.length || scenes.some(s => !s.imageSrc)) { alert("Setup scenes and wait for cloud uploads to finish first."); return; }
             
@@ -915,7 +1013,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>360 Learning Journey</title>
+    <title>Virtual Learning Journey</title>
     <script src="https://cdn.tailwindcss.com"><\/script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
     <style>
@@ -959,16 +1057,32 @@
         </div>
     </div>
 
+    <!-- Intro Overlay -->
+    <div id="introOverlay" class="fixed inset-0 bg-slate-900/90 z-[400] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity duration-500">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full text-center border-t-4 border-blue-500 transform transition-transform scale-100">
+            <div class="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <h1 id="introTitleText" class="text-2xl font-bold text-slate-800 mb-3"></h1>
+            <p id="introDescText" class="text-slate-600 mb-8 leading-relaxed whitespace-pre-line"></p>
+            <button id="startJourneyBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-transform hover:scale-105 w-full">Start Journey</button>
+        </div>
+    </div>
+
     <div id="fadeOverlay" class="fixed inset-0 bg-slate-950 z-[9999] opacity-0 pointer-events-none transition-opacity duration-500"></div>
     <div id="transitContainer" class="fixed bottom-10 transit-btn hidden z-50">
         <button id="transitTrigger" class="bg-purple-600 text-white px-8 py-4 rounded-full font-bold shadow-2xl border-4 border-white">Next Scene</button>
     </div>
     <div id="menu">
         <div id="menuPanel" class="hidden bg-white p-4 rounded-lg mb-4 shadow-2xl w-64">
-            <h3 class="font-bold border-b mb-2 pb-1">Tour Map</h3>
+            <h3 class="font-bold border-b mb-2 pb-1">Sites</h3>
             <div id="sceneLinks" class="space-y-1"></div>
         </div>
-        <button id="menuBtn" class="bg-indigo-600 text-white w-14 h-14 rounded-full flex items-center justify-center">MAP</button>
+        <button id="menuBtn" class="bg-indigo-600 text-white w-14 h-14 rounded-full flex items-center justify-center hover:bg-indigo-700 transition-colors shadow-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
     </div>
     <div id="popup" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-xl shadow-2xl hidden w-80 max-w-[90vw] z-[200]">
         <button onclick="closeP()" class="absolute top-2 right-2 text-slate-400">✕</button>
@@ -987,6 +1101,7 @@
     </div>
     <script>
         const scenes = ${JSON.stringify(exportScenes)};
+        const tourIntro = ${JSON.stringify(tourIntro)};
         let cur = 0, max = 0, lon = 0, lat = 0;
         let scene, camera, renderer, sphere, vis = new Set();
         
@@ -1030,6 +1145,19 @@
             document.addEventListener('touchmove', move, {passive:false});
             document.addEventListener('touchend', () => isD = false);
             
+            // Intro Handling
+            if (tourIntro && tourIntro.title) {
+                document.getElementById('introTitleText').textContent = tourIntro.title;
+                document.getElementById('introDescText').textContent = tourIntro.desc;
+                document.getElementById('startJourneyBtn').onclick = () => {
+                    const overlay = document.getElementById('introOverlay');
+                    overlay.classList.add('opacity-0');
+                    setTimeout(() => overlay.classList.add('hidden'), 500);
+                };
+            } else {
+                document.getElementById('introOverlay').classList.add('hidden');
+            }
+
             load(0); animate();
         }
 
