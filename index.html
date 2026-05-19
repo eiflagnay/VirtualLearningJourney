@@ -1312,7 +1312,7 @@
                 });
                 
                 const exportHtml = `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -1477,18 +1477,17 @@
     </div>
     
     <script>
-        const scenes = ${JSON.stringify(exportScenes)};
-        const tourIntro = ${JSON.stringify(tourIntro)};
+        const scenes = \${JSON.stringify(exportScenes)};
+        const tourIntro = \${JSON.stringify(tourIntro)};
         let cur = 0, max = 0, lon = 0, lat = 0;
         let scene, camera, renderer, sphere;
-        let vis = {}; // Persistent state across scenes: vis[sceneIdx] = Set()
+        let vis = {}; 
         let activeP = null;
         let tourCompleted = false;
         
         let isD = false, mx, my, mL, mLat;
         let momentum = true, lonVel = 0, latVel = 0, prevLon = 0, prevLat = 0;
         
-        // Helper to find the next scene that isn't hidden
         function getNextVis(startIdx) {
             for(let i = startIdx + 1; i < scenes.length; i++) {
                 if(!scenes[i].isHidden) return i;
@@ -1505,9 +1504,8 @@
         function checkCompletion() {
             if (tourCompleted || scenes.length === 0) return;
             
-            // Build a set of all scenes that are connected/reachable from the start
             const connected = new Set();
-            const stack = [0]; // Always start the trace at scene 0
+            const stack = [0]; 
             
             while (stack.length > 0) {
                 const currIdx = stack.pop();
@@ -1517,11 +1515,9 @@
                 const s = scenes[currIdx];
                 if (!s) continue;
                 
-                // 1. Trace Linear connection (next visible scene)
                 const nxt = getNextVis(currIdx);
                 if (nxt !== -1 && !connected.has(nxt)) stack.push(nxt);
                 
-                // 2. Trace Portal connections (including hidden ones)
                 s.hotspots.forEach(h => {
                     if (h.targetSceneId) {
                         const targetIdx = scenes.findIndex(sc => sc.id === h.targetSceneId);
@@ -1531,81 +1527,43 @@
             }
 
             let totalH = 0, totalV = 0;
-            // Only require hotspots from scenes that are actually reachable
             connected.forEach(idx => {
-                totalH += scenes[idx].hotspots.length;
-                if (vis[idx]) totalV += vis[idx].size;
+                if (scenes[idx]) {
+                    totalH += scenes[idx].hotspots.length;
+                    if (vis[idx]) totalV += vis[idx].size;
+                }
             });
             
             if (totalH > 0 && totalH === totalV) {
                 tourCompleted = true;
                 
-                // Unlock Map Menu Button
                 const btn = document.getElementById('openMapMenuBtn');
-        function getPtr(e) {
-            if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
-            return { x: e.clientX, y: e.clientY };
-        }
-
-        function checkCompletion() {
-            if (tourCompleted || scenes.length === 0) return;
-            
-            // Build a set of all scenes that are connected/reachable from the start
-            const connected = new Set();
-            const stack = [0]; // Always start the trace at scene 0
-            
-            while (stack.length > 0) {
-                const currIdx = stack.pop();
-                if (connected.has(currIdx)) continue;
-                connected.add(currIdx);
+                if (btn) {
+                    btn.innerHTML = '🗺️ Fast Travel Map';
+                    btn.className = 'w-full text-left p-2 rounded bg-amber-100 font-bold text-amber-800 hover:bg-amber-200 mt-2 transition-colors';
+                    btn.onclick = () => { 
+                        const pnl = document.getElementById('menuPanel');
+                        if(pnl) pnl.classList.add('hidden'); 
+                        openMap(); 
+                    };
+                }
                 
-                const s = scenes[currIdx];
-                if (!s) continue;
-                
-                // 1. Trace Linear connection (next visible scene)
-                const nxt = getNextVis(currIdx);
-                if (nxt !== -1 && !connected.has(nxt)) stack.push(nxt);
-                
-                // 2. Trace Portal connections (including hidden ones)
-                s.hotspots.forEach(h => {
-                    if (h.targetSceneId) {
-                        const targetIdx = scenes.findIndex(sc => sc.id === h.targetSceneId);
-                        if (targetIdx !== -1 && !connected.has(targetIdx)) stack.push(targetIdx);
-                    }
-                });
-            }
-
-            let totalH = 0, totalV = 0;
-            // Only require hotspots from scenes that are actually reachable
-            connected.forEach(idx => {
-                totalH += scenes[idx].hotspots.length;
-                if (vis[idx]) totalV += vis[idx].size;
-            });
-            
-            if (totalH > 0 && totalH === totalV) {
-                tourCompleted = true;
-                
-                // Unlock Map Menu Button
-                const btn = document.getElementById('openMapMenuBtn');
-                btn.innerHTML = '🗺️ Fast Travel Map';
-                btn.className = 'w-full text-left p-2 rounded bg-amber-100 font-bold text-amber-800 hover:bg-amber-200 mt-2';
-                btn.onclick = () => { document.getElementById('menuPanel').classList.add('hidden'); openMap(); };
-                
-                // Refresh the menu to dynamically reveal the secret rooms!
                 renderMenu();
                 
-                // Show completion overlay
                 const over = document.getElementById('completeOverlay');
-                over.classList.remove('hidden');
-                setTimeout(() => over.classList.remove('opacity-0'), 50);
+                if (over) {
+                    over.classList.remove('hidden');
+                    setTimeout(() => over.classList.remove('opacity-0'), 50);
+                }
             }
         }
 
         function showUnlockToast() {
             const t = document.getElementById('unlockToast');
-            t.classList.remove('opacity-0', '-translate-y-4');
-            setTimeout(() => t.classList.add('opacity-0', '-translate-y-4'), 3000);
+            if(t) {
+                t.classList.remove('opacity-0', '-translate-y-4');
+                setTimeout(() => t.classList.add('opacity-0', '-translate-y-4'), 3000);
+            }
         }
 
         function updateHud() {
@@ -1890,7 +1848,7 @@
         function renderMenu() {
             const links = document.getElementById('sceneLinks'); links.innerHTML = '';
             scenes.forEach((s, i) => { 
-                if (s.isHidden && !tourCompleted) return; // Hide until completed
+                if (s.isHidden && !tourCompleted) return; 
                 const b = document.createElement('button'); 
                 b.className = 'w-full text-left p-2 rounded ' + (i === cur ? 'bg-indigo-50 font-bold' : (i <= max || tourCompleted ? 'hover:bg-slate-100' : 'opacity-50')); 
                 b.textContent = (i+1)+'. '+s.title + (s.isHidden ? ' 🤫' : ''); 
@@ -1939,16 +1897,18 @@
             renderer.render(scene, camera); 
             
             const s = scenes[cur]; 
-            s.hotspots.forEach((h, i) => { 
-                const div = document.getElementById('h'+i); 
-                if (!div) return; 
-                const v = new THREE.Vector3(h.pos.x, h.pos.y, h.pos.z).project(camera); 
-                if(v.z < 1) { 
-                    div.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px'; 
-                    div.style.top = (v.y * -0.5 + 0.5) * window.innerHeight + 'px'; 
-                    div.style.display = 'flex'; 
-                } else div.style.display = 'none'; 
-            }); 
+            if (s && s.hotspots) {
+                s.hotspots.forEach((h, i) => { 
+                    const div = document.getElementById('h'+i); 
+                    if (!div) return; 
+                    const v = new THREE.Vector3(h.pos.x, h.pos.y, h.pos.z).project(camera); 
+                    if(v.z < 1) { 
+                        div.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px'; 
+                        div.style.top = (v.y * -0.5 + 0.5) * window.innerHeight + 'px'; 
+                        div.style.display = 'flex'; 
+                    } else div.style.display = 'none'; 
+                }); 
+            }
             
             if (activeP !== null) {
                 const p = document.getElementById('popup');
