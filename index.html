@@ -145,7 +145,7 @@
                 </div>
             </div>
         </div>
-        <button id="fabBtn" class="w-16 h-16 bg-slate-800 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-slate-700 transition-colors border-4 border-white focus:outline-none">
+        <button id="fabBtn" class="w-16 h-16 bg-slate-800 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-slate-700 transition-all duration-200 hover:-translate-y-1 active:translate-y-0 active:scale-90 border-4 border-white focus:outline-none">
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
         </button>
     </div>
@@ -328,7 +328,8 @@
                         <li>Upload and link 360° panoramas</li>
                         <li>Interactive hotspots with text, video, and portals</li>
                         <li>Linear quiz checkpoints (Transit Logic)</li>
-                        <li>✨ Gemini AI integration for auto-filling content and generating challenges</li>
+                        <li>✨ Gamified Fast Travel Map and Hidden Bonus Scenes</li>
+                        <li>✨ Gemini AI integration for auto-filling content</li>
                         <li>1-Click Export to a standalone HTML file</li>
                     </ul>
                 </div>
@@ -700,11 +701,32 @@
                 const isActive = s.id === activeSceneId;
                 const div = document.createElement('div');
                 div.className = `w-full px-3 py-2 rounded-md mb-1 text-sm font-medium flex items-center justify-between group cursor-pointer ${isActive ? 'bg-indigo-100 text-indigo-800' : 'text-slate-600 hover:bg-slate-100'}`;
-                div.innerHTML = `<span class="truncate">${i + 1}. ${s.title}</span>`;
-                const del = document.createElement('button');
-                del.className = 'opacity-0 group-hover:opacity-100 text-red-500 p-1';
-                del.innerHTML = '✕';
-                del.onclick = (e) => { 
+                
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'truncate';
+                titleSpan.textContent = `${i + 1}. ${s.title}`;
+                div.appendChild(titleSpan);
+                
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity';
+                
+                const hideBtn = document.createElement('button');
+                hideBtn.className = `p-1 ${s.isHidden ? 'text-slate-400' : 'text-indigo-500 hover:text-indigo-700'}`;
+                hideBtn.title = s.isHidden ? "Scene is hidden from menu" : "Scene is visible in menu";
+                hideBtn.innerHTML = s.isHidden 
+                    ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>' 
+                    : '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+                hideBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    s.isHidden = !s.isHidden;
+                    renderFloatingMenu();
+                };
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'text-red-500 hover:text-red-700 p-1';
+                delBtn.innerHTML = '✕';
+                delBtn.title = "Delete Scene";
+                delBtn.onclick = (e) => { 
                     e.stopPropagation(); 
                     customConfirm(`Delete "${s.title}"?`, (confirmed) => {
                         if (confirmed) {
@@ -714,7 +736,11 @@
                         }
                     });
                 };
-                div.appendChild(del);
+                
+                actionsDiv.appendChild(hideBtn);
+                actionsDiv.appendChild(delBtn);
+                div.appendChild(actionsDiv);
+                
                 div.onclick = () => { switchScene(s.id); fabPanel.classList.add('hidden'); };
                 list.appendChild(div);
             });
@@ -945,7 +971,7 @@
                 const b = document.createElement('button');
                 b.className = 'relative z-10 px-5 py-3 rounded-xl font-bold shadow-xl border-2 transition-transform hover:scale-105 ' + 
                               (s.id === activeSceneId ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-800 border-slate-200');
-                b.textContent = s.title;
+                b.innerHTML = s.title + (s.isHidden ? ' <span title="Hidden Scene">🤫</span>' : '');
                 b.onclick = () => { 
                     document.getElementById('closeMapBtn').click(); 
                     switchScene(s.id);
@@ -1014,7 +1040,7 @@
             customPrompt("Enter Scene Name:", `Scene ${scenes.length + 1}`, (name) => {
                 if (!name || !name.trim()) return;
                 const id = 's' + Date.now();
-                scenes.push({ id, title: name.trim(), imageSrc: null, localImageSrc: null, hotspots: [], transitConfig: null });
+                scenes.push({ id, title: name.trim(), imageSrc: null, localImageSrc: null, hotspots: [], transitConfig: null, isHidden: false });
                 switchScene(id);
                 fabPanel.classList.add('hidden');
             });
@@ -1365,25 +1391,33 @@
             <p class="text-slate-600 mb-8 leading-relaxed">You have discovered all information points and completed every challenge.</p>
             <div class="bg-amber-50 rounded-xl p-4 mb-6 border border-amber-200 text-amber-800">
                 <p class="font-bold mb-1">🗺️ Fast Travel Unlocked!</p>
-                <p class="text-sm">You can now use the Map to instantly travel to any location.</p>
+                <p class="text-sm">You can now use the Map to instantly travel to any location, including secret hidden scenes.</p>
             </div>
             <button onclick="document.getElementById('completeOverlay').classList.add('hidden'); openMap();" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg w-full">Open Map</button>
         </div>
     </div>
 
     <div id="fadeOverlay" class="fixed inset-0 bg-slate-950 z-[9999] opacity-0 pointer-events-none transition-opacity duration-500"></div>
+    
+    <div id="unlockToast" class="fixed top-24 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-3 rounded-full font-bold shadow-xl flex items-center gap-2 transition-all duration-500 opacity-0 pointer-events-none z-[150] transform -translate-y-4">
+        <span>✨ New Site Unlocked in Menu!</span>
+    </div>
+
     <div id="transitContainer" class="fixed bottom-10 transit-btn hidden z-50">
-        <button id="transitTrigger" class="bg-purple-600 text-white px-8 py-4 rounded-full font-bold shadow-2xl border-4 border-white">Next Scene</button>
+        <button id="transitTrigger" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-full font-bold shadow-2xl border-4 border-white flex items-center gap-2 transition-all hover:scale-105 active:scale-95">
+            <span>Transit Challenge</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+        </button>
     </div>
     
-    <div id="menu">
-        <div id="menuPanel" class="hidden bg-white p-4 rounded-lg mb-4 shadow-2xl w-64">
+    <div id="menu" class="flex flex-col items-end">
+        <div id="menuPanel" class="hidden bg-white p-4 rounded-lg mb-4 shadow-2xl w-64 origin-bottom-right">
             <h3 class="font-bold border-b mb-2 pb-1">Sites</h3>
             <div id="sceneLinks" class="space-y-1 mb-3"></div>
             
             <!-- Map Unlock Section -->
             <div class="pt-3 border-t border-slate-200 mt-3 mb-3">
-                <button id="openMapMenuBtn" class="w-full text-left p-2 rounded bg-slate-100 text-slate-400 font-bold cursor-not-allowed" onclick="alert('Map is locked. Discover all hotspots to unlock Fast Travel!')">
+                <button id="openMapMenuBtn" class="w-full text-left p-2 rounded bg-slate-100 text-slate-400 font-bold cursor-not-allowed transition-colors" onclick="alert('Map is locked. Discover all hotspots to unlock Fast Travel!')">
                     🔒 Fast Travel Map
                 </button>
             </div>
@@ -1393,7 +1427,7 @@
                 <input type="checkbox" id="expMomentumToggle" checked class="w-4 h-4 accent-indigo-600 cursor-pointer">
             </div>
         </div>
-        <button id="menuBtn" class="bg-indigo-600 text-white w-14 h-14 rounded-full flex items-center justify-center hover:bg-indigo-700 transition-colors shadow-lg">
+        <button id="menuBtn" class="bg-indigo-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:bg-indigo-700 hover:-translate-y-1 active:translate-y-0 active:scale-90">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
         </button>
     </div>
@@ -1454,6 +1488,14 @@
         let isD = false, mx, my, mL, mLat;
         let momentum = true, lonVel = 0, latVel = 0, prevLon = 0, prevLat = 0;
         
+        // Helper to find the next scene that isn't hidden
+        function getNextVis(startIdx) {
+            for(let i = startIdx + 1; i < scenes.length; i++) {
+                if(!scenes[i].isHidden) return i;
+            }
+            return -1;
+        }
+
         function getPtr(e) {
             if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
             if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
@@ -1464,8 +1506,10 @@
             if (tourCompleted) return;
             let totalH = 0, totalV = 0;
             scenes.forEach((sc, idx) => {
-                totalH += sc.hotspots.length;
-                if (vis[idx]) totalV += vis[idx].size;
+                if (!sc.isHidden) { // Hidden scenes do NOT count towards the win condition
+                    totalH += sc.hotspots.length;
+                    if (vis[idx]) totalV += vis[idx].size;
+                }
             });
             
             if (totalH > 0 && totalH === totalV) {
@@ -1477,11 +1521,20 @@
                 btn.className = 'w-full text-left p-2 rounded bg-amber-100 font-bold text-amber-800 hover:bg-amber-200 mt-2';
                 btn.onclick = () => { document.getElementById('menuPanel').classList.add('hidden'); openMap(); };
                 
+                // Refresh the menu to dynamically reveal the secret rooms!
+                renderMenu();
+                
                 // Show completion overlay
                 const over = document.getElementById('completeOverlay');
                 over.classList.remove('hidden');
                 setTimeout(() => over.classList.remove('opacity-0'), 50);
             }
+        }
+
+        function showUnlockToast() {
+            const t = document.getElementById('unlockToast');
+            t.classList.remove('opacity-0', '-translate-y-4');
+            setTimeout(() => t.classList.add('opacity-0', '-translate-y-4'), 3000);
         }
 
         function updateHud() {
@@ -1613,12 +1666,29 @@
                     vis[cur].add(i); 
                     updateHud(); 
                     showP(h, i); 
-                    if (s.transitConfig && vis[cur].size === s.hotspots.length && cur === max) document.getElementById('transitContainer').classList.remove('hidden'); 
+                    
+                    if (vis[cur].size === s.hotspots.length) {
+                        if (s.transitConfig && cur === max) {
+                            document.getElementById('transitContainer').classList.remove('hidden'); 
+                        } else if (!s.transitConfig && cur === max) {
+                            const nxt = getNextVis(cur);
+                            if (nxt !== -1) {
+                                max = Math.max(max, nxt);
+                                renderMenu();
+                                showUnlockToast();
+                            }
+                        }
+                    }
                     checkCompletion();
                 };
                 document.getElementById('overlay').appendChild(div);
             });
-            if ((!s.transitConfig || s.hotspots.length === 0) && cur === max && cur < scenes.length - 1) document.getElementById('transitContainer').classList.remove('hidden');
+            
+            if (!s.transitConfig && s.hotspots.length === 0 && cur === max) {
+                const nxt = getNextVis(cur);
+                if (nxt !== -1) max = Math.max(max, nxt);
+            }
+            
             renderMenu();
             updateHud();
         }
@@ -1702,7 +1772,7 @@
                 const b = document.createElement('button');
                 b.className = 'relative z-10 px-5 py-3 rounded-xl font-bold shadow-xl border-2 transition-transform hover:scale-105 ' + 
                               (i === cur ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-800 border-slate-200');
-                b.textContent = s.title;
+                b.textContent = s.title + (s.isHidden ? ' 🤫' : '');
                 b.onclick = () => { closeMap(); max = Math.max(max, i); load(i); };
                 cont.appendChild(b);
                 els[s.id] = b;
@@ -1748,20 +1818,42 @@
 
         function renderMenu() {
             const links = document.getElementById('sceneLinks'); links.innerHTML = '';
-            scenes.forEach((s, i) => { const b = document.createElement('button'); b.className = 'w-full text-left p-2 rounded ' + (i === cur ? 'bg-indigo-50 font-bold' : (i <= max ? 'hover:bg-slate-100' : 'opacity-50')); b.textContent = (i+1)+'. '+s.title; if(i <= max) b.onclick = () => { load(i); document.getElementById('menuPanel').classList.add('hidden'); }; links.appendChild(b); });
+            scenes.forEach((s, i) => { 
+                if (s.isHidden && !tourCompleted) return; // Hide until completed
+                const b = document.createElement('button'); 
+                b.className = 'w-full text-left p-2 rounded ' + (i === cur ? 'bg-indigo-50 font-bold' : (i <= max || tourCompleted ? 'hover:bg-slate-100' : 'opacity-50')); 
+                b.textContent = (i+1)+'. '+s.title + (s.isHidden ? ' 🤫' : ''); 
+                if(i <= max || tourCompleted) b.onclick = () => { load(i); document.getElementById('menuPanel').classList.add('hidden'); }; 
+                links.appendChild(b); 
+            });
         }
 
         document.getElementById('menuBtn').onclick = () => document.getElementById('menuPanel').classList.toggle('hidden');
         document.getElementById('expMomentumToggle').onchange = (e) => momentum = e.target.checked;
-        document.getElementById('transitTrigger').onclick = () => { const s = scenes[cur]; if (s.transitConfig) { document.getElementById('qText').textContent = s.transitConfig.question; document.getElementById('qAns').value = ''; document.getElementById('quiz').classList.remove('hidden'); } else if (cur < scenes.length-1) { document.getElementById('transitContainer').classList.add('hidden'); max = Math.max(max, cur+1); load(cur+1); } };
+        
+        document.getElementById('transitTrigger').onclick = () => { 
+            const s = scenes[cur]; 
+            if (s.transitConfig) { 
+                document.getElementById('qText').textContent = s.transitConfig.question; 
+                document.getElementById('qAns').value = ''; 
+                document.getElementById('quiz').classList.remove('hidden'); 
+            } 
+        };
+        
         document.getElementById('qSub').onclick = () => { 
             const s = scenes[cur]; 
             if (document.getElementById('qAns').value.trim().toLowerCase() === s.transitConfig.answer.toLowerCase()) { 
                 document.getElementById('quiz').classList.add('hidden'); 
                 document.getElementById('transitContainer').classList.add('hidden'); 
-                if (cur < scenes.length-1) { max = Math.max(max, cur+1); load(cur+1); } 
+                const nxt = getNextVis(cur);
+                if (nxt !== -1) { 
+                    max = Math.max(max, nxt); 
+                    load(nxt); 
+                } 
                 checkCompletion();
-            } 
+            } else {
+                alert("Incorrect answer. Please try again!");
+            }
         };
         
         function animate() { 
