@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Virtual Learning Journey</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; position: fixed; width: 100%; height: 100%; touch-action: none; overscroll-behavior: none; }
+        .hotspot { position: absolute; width: 44px; height: 44px; font-size: 16px; background: #6366f1; border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer; transform: translate(-50%, -50%); box-shadow: 0 0 10px rgba(0,0,0,0.5); font-weight: bold; transition: background 0.3s; z-index: 10; }
+        .visited { background: #10b981 !important; }
+        .hud-complete { background-color: #10b981 !important; border-color: #059669 !important; animation: pulseGreen 2s infinite; }
+        #menu { position: fixed; bottom: 20px; right: 20px; z-index: 100; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0) translateX(-50%); } 50% { transform: translateY(-10px) translateX(-50%); } }
+        @keyframes pulseGreen { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+        .transit-btn { animation: bounce 2s infinite; left: 50%; }
+    </style>
+</head>
+<body>
+    <div id="container" style="width: 100vw; height: 100vh;"></div>
+    <div id="overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-10"></div>
+    
+    <div id="progressHud" class="absolute top-6 left-1/2 -translate-x-1/2 bg-slate-900/80 text-white px-5 py-2 rounded-full font-bold text-sm backdrop-blur shadow-lg z-40 transition-all duration-300 hidden flex items-center gap-2 border border-slate-700 pointer-events-none">
+        <span>🔍 Discovered:</span>
+        <span id="pCount" class="text-indigo-300">0</span>
+        <span class="text-slate-500">/</span>
+        <span id="pTotal">0</span>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-slate-950 z-[99999] flex flex-col items-center justify-center transition-all duration-500">
+        <div id="loadingContent" class="text-center">
+            <div class="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-white font-medium text-lg tracking-wide">Loading 360° Experience...</p>
+            <p id="loadingStatusText" class="text-slate-400 text-sm mt-2">Fetching scene panorama...</p>
+        </div>
+        <div id="errorBox" class="max-w-md w-full mx-4 bg-slate-900 border border-red-500/30 rounded-2xl p-6 text-center hidden">
+            <div class="bg-red-500/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+            <h3 class="text-white font-bold text-lg mb-2">Image Loading Blocked (CORS)</h3>
+            <p class="text-slate-400 text-sm mb-4 leading-relaxed">
+                WebGL requires cross-origin permission to render this 360° image. Please make sure you have configured CORS rules on your Firebase Storage bucket.
+            </p>
+            <div class="bg-slate-950 rounded-lg p-3 text-left font-mono text-xs text-slate-300 overflow-x-auto mb-4 max-h-24">
+                1. Paste this in Cloud Shell:<br>
+                echo '[{"origin": ["*"],"method": ["GET"],"maxAgeSeconds": 3600}]' > cors.json<br><br>
+                2. Apply rule:<br>
+                gsutil cors set cors.json gs://virtuallearningjourney.firebasestorage.app
+            </div>
+            <button onclick="window.location.reload()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2 rounded-lg text-sm transition-colors">
+                Retry Loading
+            </button>
+        </div>
+    </div>
+
+    <!-- Intro Overlay -->
+    <div id="introOverlay" class="fixed inset-0 bg-slate-900/90 z-[400] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity duration-500">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full text-center border-t-4 border-blue-500 transform transition-transform scale-100">
+            <div class="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <h1 id="introTitleText" class="text-2xl font-bold text-slate-800 mb-3"></h1>
+            <p id="introDescText" class="text-slate-600 mb-8 leading-relaxed whitespace-pre-line"></p>
+            <button id="startJourneyBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-transform hover:scale-105 w-full">Start Journey</button>
+        </div>
+    </div>
+
+    <!-- Journey Complete Overlay -->
+    <div id="completeOverlay" class="fixed inset-0 bg-emerald-900/95 hidden z-[600] flex items-center justify-center p-4 transition-opacity duration-500 opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-t-4 border-emerald-500">
+            <div class="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">🏆</div>
+            <h2 class="text-3xl font-bold text-slate-800 mb-3">Journey Complete!</h2>
+            <p class="text-slate-600 mb-8 leading-relaxed">You have discovered all information points and completed every challenge.</p>
+            <div class="bg-amber-50 rounded-xl p-4 mb-6 border border-amber-200 text-amber-800">
+                <p class="font-bold mb-1">🗺️ Fast Travel Unlocked!</p>
+                <p class="text-sm">You can now use the Map to instantly travel to any location, including secret hidden scenes.</p>
+            </div>
+            <button onclick="document.getElementById('completeOverlay').classList.add('hidden'); openMap();" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg w-full">Open Map</button>
+        </div>
+    </div>
+
+    <div id="fadeOverlay" class="fixed inset-0 bg-slate-950 z-[9999] opacity-0 pointer-events-none transition-opacity duration-500"></div>
+    
+    <div id="unlockToast" class="fixed top-24 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-3 rounded-full font-bold shadow-xl flex items-center gap-2 transition-all duration-500 opacity-0 pointer-events-none z-[150] transform -translate-y-4">
+        <span>✨ New Site Unlocked in Menu!</span>
+    </div>
+
+    <div id="transitContainer" class="fixed bottom-10 transit-btn hidden z-50">
+        <button id="transitTrigger" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-full font-bold shadow-2xl border-4 border-white flex items-center gap-2 transition-all hover:scale-105 active:scale-95">
+            <span>Transit Challenge</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+        </button>
+    </div>
+    
+    <div id="menu" class="flex flex-col items-end">
+        <div id="menuPanel" class="hidden bg-white p-4 rounded-lg mb-4 shadow-2xl w-64 origin-bottom-right">
+            <h3 class="font-bold border-b mb-2 pb-1">Sites</h3>
+            <div id="sceneLinks" class="space-y-1 mb-3"></div>
+            
+            <!-- Map Unlock Section -->
+            <div class="pt-3 border-t border-slate-200 mt-3 mb-3">
+                <button id="openMapMenuBtn" class="w-full text-left p-2 rounded bg-slate-100 text-slate-400 font-bold cursor-not-allowed transition-colors" onclick="alert('Map is locked. Discover all hotspots to unlock Fast Travel!')">
+                    🔒 Fast Travel Map
+                </button>
+            </div>
+
+            <div class="pt-3 border-t border-slate-200 flex items-center justify-between">
+                <span class="text-sm font-bold text-slate-700">Momentum Pan</span>
+                <input type="checkbox" id="expMomentumToggle" checked class="w-4 h-4 accent-indigo-600 cursor-pointer">
+            </div>
+        </div>
+        <button id="menuBtn" class="bg-indigo-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:bg-indigo-700 hover:-translate-y-1 active:translate-y-0 active:scale-90">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+    </div>
+
+    <!-- Diagnostic Visual Map Modal (Exported App) -->
+    <div id="mapModal" class="fixed inset-0 bg-slate-900/95 hidden z-[500] flex flex-col p-6 transition-opacity duration-300 opacity-0">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-cyan-400"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+                Fast Travel Map
+            </h2>
+            <button onclick="closeMap()" class="text-slate-300 hover:text-white font-bold text-xl">✕ Close</button>
+        </div>
+        <div class="flex-grow w-full relative bg-slate-800 rounded-xl overflow-auto border border-slate-700 p-8 flex flex-wrap gap-12 items-center justify-center content-center" id="mapNodesContainer">
+            <svg id="mapLines" class="absolute inset-0 w-full h-full pointer-events-none">
+                <defs>
+                    <marker id="arrow-blue" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6" />
+                    </marker>
+                    <marker id="arrow-purple" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#9333ea" />
+                    </marker>
+                </defs>
+            </svg>
+        </div>
+        <div class="mt-4 flex gap-8 text-sm text-slate-300 font-medium justify-center">
+            <div class="flex items-center gap-2"><div class="w-8 h-1.5 bg-blue-500 rounded"></div> Portal Connection</div>
+            <div class="flex items-center gap-2"><div class="w-8 h-1.5 border-t-4 border-dashed border-purple-500"></div> Transit Challenge</div>
+        </div>
+    </div>
+
+    <div id="popup" class="absolute -translate-x-1/2 bg-white p-6 rounded-xl shadow-2xl hidden w-[90vw] max-w-lg z-[200]">
+        <button onclick="closeP()" class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 text-xl font-bold">✕</button>
+        <h2 id="pTitle" class="font-bold text-2xl mb-3"></h2>
+        <iframe id="pVid" class="w-full aspect-video hidden mb-4 rounded-md shadow-sm" frameborder="0" allowfullscreen></iframe>
+        <p id="pDesc" class="text-slate-600 text-base leading-relaxed mb-5"></p>
+        <button id="pTransitBtn" class="w-full bg-purple-600 text-white py-3 rounded-lg text-base font-bold mb-2 hidden shadow-sm">Travel Here</button>
+    </div>
+    
+    <div id="quiz" class="fixed inset-0 bg-slate-900/90 hidden z-[300] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full border-t-4 border-purple-500">
+            <h3 class="text-xl font-bold mb-4">Challenge</h3>
+            <p id="qText" class="mb-4"></p>
+            <input type="text" id="qAns" class="w-full border p-3 rounded-md mb-2">
+            <div class="flex justify-end gap-3 mt-4"><button onclick="document.getElementById('quiz').classList.add('hidden')" class="text-slate-500">Cancel</button><button id="qSub" class="bg-purple-600 text-white px-6 py-2 rounded-md font-bold">Submit</button></div>
+        </div>
+    </div>
+    
+    <script>
+        const scenes = ${JSON.stringify(exportScenes)};
+        const tourIntro = ${JSON.stringify(tourIntro)};
+        let cur = 0, max = 0, lon = 0, lat = 0;
+        let scene, camera, renderer, sphere;
+        let vis = {}; 
+        let activeP = null;
+        let tourCompleted = false;
+        
+        let isD = false, mx, my, mL, mLat;
+        let momentum = true, lonVel = 0, latVel = 0, prevLon = 0, prevLat = 0;
+        
+        function getNextVis(startIdx) {
+            for(let i = startIdx + 1; i < scenes.length; i++) {
+                if(!scenes[i].isHidden) return i;
+            }
+            return -1;
+        }
+
+        function getPtr(e) {
+            if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        function checkCompletion() {
+            if (tourCompleted || scenes.length === 0) return;
+            
+            const connected = new Set();
+            const stack = [0]; 
+            
+            while (stack.length > 0) {
+                const currIdx = stack.pop();
+                if (connected.has(currIdx)) continue;
+                connected.add(currIdx);
+                
+                const s = scenes[currIdx];
+                if (!s) continue;
+                
+                const nxt = getNextVis(currIdx);
+                if (nxt !== -1 && !connected.has(nxt)) stack.push(nxt);
+                
+                s.hotspots.forEach(h => {
+                    if (h.targetSceneId) {
+                        const targetIdx = scenes.findIndex(sc => sc.id === h.targetSceneId);
+                        if (targetIdx !== -1 && !connected.has(targetIdx)) stack.push(targetIdx);
+                    }
+                });
+            }
+
+            let totalH = 0, totalV = 0;
+            connected.forEach(idx => {
+                if (scenes[idx]) {
+                    totalH += scenes[idx].hotspots.length;
+                    if (vis[idx]) totalV += vis[idx].size;
+                }
+            });
+            
+            if (totalH > 0 && totalH === totalV) {
+                tourCompleted = true;
+                
+                const btn = document.getElementById('openMapMenuBtn');
+                if (btn) {
+                    btn.innerHTML = '🗺️ Fast Travel Map';
+                    btn.className = 'w-full text-left p-2 rounded bg-amber-100 font-bold text-amber-800 hover:bg-amber-200 mt-2 transition-colors';
+                    btn.onclick = () => { 
+                        const pnl = document.getElementById('menuPanel');
+                        if(pnl) pnl.classList.add('hidden'); 
+                        openMap(); 
+                    };
+                }
+                
+                renderMenu();
+                
+                const over = document.getElementById('completeOverlay');
+                if (over) {
+                    over.classList.remove('hidden');
+                    setTimeout(() => over.classList.remove('opacity-0'), 50);
+                }
+            }
+        }
+
+        function showUnlockToast() {
+            const t = document.getElementById('unlockToast');
+            if(t) {
+                t.classList.remove('opacity-0', '-translate-y-4');
+                setTimeout(() => t.classList.add('opacity-0', '-translate-y-4'), 3000);
+            }
+        }
+
+        function updateHud() {
+            const h = document.getElementById('progressHud');
+            const s = scenes[cur];
+            if (!s || !s.hotspots || s.hotspots.length === 0) { h.classList.add('hidden'); return; }
+            h.classList.remove('hidden', 'hud-complete', 'bg-emerald-600', 'border-emerald-500');
+            h.classList.add('bg-slate-900/80', 'border-slate-700');
+            
+            const discovered = vis[cur] ? vis[cur].size : 0;
+            document.getElementById('pCount').textContent = discovered;
+            document.getElementById('pTotal').textContent = s.hotspots.length;
+            
+            if (discovered === s.hotspots.length) {
+                h.classList.remove('bg-slate-900/80', 'border-slate-700');
+                h.classList.add('bg-emerald-600', 'border-emerald-500', 'hud-complete');
+                document.getElementById('pCount').className = 'text-white';
+            } else {
+                document.getElementById('pCount').className = 'text-indigo-300';
+            }
+        }
+
+        function showError(msg) {
+            document.getElementById('loadingContent').classList.add('hidden');
+            const eBox = document.getElementById('errorBox');
+            eBox.querySelector('h3').textContent = "Error Loading Tour";
+            eBox.querySelector('p').textContent = msg;
+            eBox.querySelector('.font-mono').classList.add('hidden');
+            eBox.classList.remove('hidden');
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            const c = document.getElementById('container');
+            c.appendChild(renderer.domElement);
+            
+            const geo = new THREE.SphereGeometry(500, 60, 40); geo.scale(-1, 1, 1);
+            sphere = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+            scene.add(sphere);
+            
+            window.onresize = () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
+            
+            const start = (e) => { isD = true; const p = getPtr(e); mx = p.x; my = p.y; mL = lon; mLat = lat; };
+            const move = (e) => { if(!isD) return; if(e.cancelable) e.preventDefault(); const p = getPtr(e); lon = (mx - p.x) * 0.1 + mL; lat = (p.y - my) * 0.1 + mLat; };
+            
+            c.addEventListener('mousedown', start);
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', () => isD = false);
+            c.addEventListener('touchstart', start, {passive:false});
+            document.addEventListener('touchmove', move, {passive:false});
+            document.addEventListener('touchend', () => isD = false);
+            
+            if (tourIntro && tourIntro.title) {
+                document.getElementById('introTitleText').textContent = tourIntro.title;
+                document.getElementById('introDescText').textContent = tourIntro.desc;
+                document.getElementById('startJourneyBtn').onclick = () => {
+                    const overlay = document.getElementById('introOverlay');
+                    overlay.classList.add('opacity-0');
+                    setTimeout(() => overlay.classList.add('hidden'), 500);
+                };
+            } else {
+                document.getElementById('introOverlay').classList.add('hidden');
+            }
+
+            load(0); animate();
+        }
+
+        function load(idx) {
+            cur = idx; 
+            if (!vis[cur]) vis[cur] = new Set();
+            
+            const s = scenes[idx];
+            if (!s) {
+                showError("No valid scene found in this tour file.");
+                return;
+            }
+            
+            document.getElementById('loadingOverlay').classList.remove('opacity-0', 'pointer-events-none');
+            document.getElementById('loadingOverlay').classList.add('opacity-100', 'pointer-events-auto');
+            document.getElementById('loadingContent').classList.remove('hidden');
+            document.getElementById('errorBox').classList.add('hidden');
+
+            const loadTextureWithFallback = (url, isFallback = false) => {
+                const loader = new THREE.TextureLoader();
+                if (!url.startsWith('blob:') && !url.startsWith('data:')) loader.setCrossOrigin('anonymous');
+                
+                loader.load(
+                    url, 
+                    (t) => { 
+                        sphere.material.map = t; 
+                        sphere.material.needsUpdate = true; 
+                        setTimeout(() => {
+                            document.getElementById('loadingOverlay').classList.remove('opacity-100', 'pointer-events-auto');
+                            document.getElementById('loadingOverlay').classList.add('opacity-0', 'pointer-events-none');
+                            const fade = document.getElementById('fadeOverlay');
+                            if (fade && fade.classList.contains('opacity-100')) {
+                                fade.classList.remove('opacity-100', 'pointer-events-auto');
+                                fade.classList.add('opacity-0', 'pointer-events-none');
+                            }
+                        }, 250);
+                    },
+                    undefined,
+                    (err) => {
+                        if (!isFallback && !url.startsWith('blob:') && !url.startsWith('data:')) {
+                            const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+                            loadTextureWithFallback(proxyUrl, true);
+                        } else {
+                            document.getElementById('loadingContent').classList.add('hidden');
+                            document.getElementById('errorBox').classList.remove('hidden');
+                        }
+                    }
+                );
+            };
+            
+            loadTextureWithFallback(s.imageSrc);
+            
+            document.getElementById('overlay').innerHTML = ''; document.getElementById('transitContainer').classList.add('hidden'); closeP();
+            s.hotspots.forEach((h, i) => {
+                const div = document.createElement('div'); div.className = 'hotspot'; div.id = 'h'+i; div.innerHTML = 'i';
+                div.style.pointerEvents = 'auto';
+                if(vis[cur].has(i)) div.classList.add('visited');
+                
+                div.onclick = (e) => { 
+                    e.stopPropagation(); 
+                    div.classList.add('visited'); 
+                    vis[cur].add(i); 
+                    updateHud(); 
+                    showP(h, i); 
+                    
+                    if (vis[cur].size === s.hotspots.length) {
+                        if (s.transitConfig && cur === max) {
+                            document.getElementById('transitContainer').classList.remove('hidden'); 
+                        } else if (!s.transitConfig && cur === max) {
+                            const nxt = getNextVis(cur);
+                            if (nxt !== -1) {
+                                max = Math.max(max, nxt);
+                                renderMenu();
+                                showUnlockToast();
+                            }
+                        }
+                    }
+                    checkCompletion();
+                };
+                document.getElementById('overlay').appendChild(div);
+            });
+            
+            if (!s.transitConfig && s.hotspots.length === 0 && cur === max) {
+                const nxt = getNextVis(cur);
+                if (nxt !== -1) max = Math.max(max, nxt);
+            }
+            
+            renderMenu();
+            updateHud();
+        }
+
+        function showP(h, idx) {
+            activeP = idx;
+            document.getElementById('pTitle').textContent = h.title; document.getElementById('pDesc').textContent = h.desc;
+            const vid = document.getElementById('pVid'); const yt = h.videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=))([\w-]{11})/);
+            if(yt) { vid.src = 'https://www.youtube.com/embed/'+yt[1]; vid.classList.remove('hidden'); } else { vid.src = ''; vid.classList.add('hidden'); }
+            
+            const tBtn = document.getElementById('pTransitBtn');
+            if (h.targetSceneId) {
+                const targetIdx = scenes.findIndex(s => s.id === h.targetSceneId);
+                if (targetIdx !== -1) {
+                    tBtn.textContent = 'Travel to: ' + scenes[targetIdx].title;
+                    tBtn.classList.remove('hidden');
+                    tBtn.onclick = () => {
+                        closeP();
+                        const fade = document.getElementById('fadeOverlay');
+                        fade.classList.remove('opacity-0', 'pointer-events-none');
+                        fade.classList.add('opacity-100', 'pointer-events-auto');
+                        
+                        const origFov = camera.fov;
+                        let zFrame;
+                        const zStep = () => {
+                            camera.fov -= (camera.fov - 20) * 0.1;
+                            camera.updateProjectionMatrix();
+                            zFrame = requestAnimationFrame(zStep);
+                        };
+                        zFrame = requestAnimationFrame(zStep);
+
+                        setTimeout(() => {
+                            cancelAnimationFrame(zFrame);
+                            camera.fov = origFov; camera.updateProjectionMatrix();
+                            max = Math.max(max, targetIdx);
+                            load(targetIdx);
+                        }, 500);
+                    };
+                } else tBtn.classList.add('hidden');
+            } else tBtn.classList.add('hidden');
+
+            document.getElementById('popup').classList.remove('hidden');
+        }
+
+        function closeP() { 
+            activeP = null;
+            const p = document.getElementById('popup');
+            p.style.visibility = '';
+            p.classList.add('hidden'); 
+            document.getElementById('pVid').src = ''; 
+        }
+
+        function drawSVGLine(svg, x1, y1, x2, y2, color, dashed) {
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const cx = x1 + dx / 2 - dy * 0.15; 
+            const cy = y1 + dy / 2 + dx * 0.15;
+            path.setAttribute('d', 'M ' + x1 + ' ' + y1 + ' Q ' + cx + ' ' + cy + ' ' + x2 + ' ' + y2);
+            path.setAttribute('stroke', color);
+            path.setAttribute('stroke-width', '4');
+            path.setAttribute('fill', 'none');
+            if (dashed) path.setAttribute('stroke-dasharray', '8,8');
+            const cName = color === '#3b82f6' ? 'blue' : 'purple';
+            path.setAttribute('marker-end', 'url(#arrow-' + cName + ')');
+            svg.appendChild(path);
+        }
+
+        function openMap() {
+            const m = document.getElementById('mapModal');
+            m.classList.remove('hidden');
+            setTimeout(() => m.classList.remove('opacity-0'), 10);
+            
+            const cont = document.getElementById('mapNodesContainer');
+            const svg = document.getElementById('mapLines');
+            Array.from(svg.querySelectorAll('path')).forEach(p => p.remove());
+            Array.from(cont.children).forEach(c => { if(c.tagName !== 'svg' && c.tagName !== 'SVG') c.remove(); });
+            
+            const els = {};
+            scenes.forEach((s, i) => {
+                const b = document.createElement('button');
+                b.className = 'relative z-10 px-5 py-3 rounded-xl font-bold shadow-xl border-2 transition-transform hover:scale-105 ' + 
+                              (i === cur ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-800 border-slate-200');
+                b.textContent = s.title + (s.isHidden ? ' 🤫' : '');
+                b.onclick = () => { closeMap(); max = Math.max(max, i); load(i); };
+                cont.appendChild(b);
+                els[s.id] = b;
+            });
+            
+            setTimeout(() => {
+                const sR = svg.getBoundingClientRect();
+                scenes.forEach((s, i) => {
+                    const f = els[s.id];
+                    if(!f) return;
+                    const fR = f.getBoundingClientRect();
+                    const fx = fR.left + fR.width/2 - sR.left;
+                    const fy = fR.top + fR.height/2 - sR.top;
+                    
+                    s.hotspots.forEach(h => {
+                        if(h.targetSceneId && els[h.targetSceneId]) {
+                            const t = els[h.targetSceneId];
+                            const tR = t.getBoundingClientRect();
+                            const tx = tR.left + tR.width/2 - sR.left;
+                            const ty = tR.top + tR.height/2 - sR.top;
+                            drawSVGLine(svg, fx, fy, tx, ty, '#3b82f6', false);
+                        }
+                    });
+                    
+                    if(s.transitConfig && i < scenes.length - 1) {
+                        const t = els[scenes[i+1].id];
+                        if(t) {
+                            const tR = t.getBoundingClientRect();
+                            const tx = tR.left + tR.width/2 - sR.left;
+                            const ty = tR.top + tR.height/2 - sR.top;
+                            drawSVGLine(svg, fx, fy, tx, ty, '#9333ea', true);
+                        }
+                    }
+                });
+            }, 50);
+        }
+
+        function closeMap() {
+            const m = document.getElementById('mapModal');
+            m.classList.add('opacity-0');
+            setTimeout(() => m.classList.add('hidden'), 300);
+        }
+
+        function renderMenu() {
+            const links = document.getElementById('sceneLinks'); links.innerHTML = '';
+            scenes.forEach((s, i) => { 
+                if (s.isHidden && !tourCompleted) return; 
+                const b = document.createElement('button'); 
+                b.className = 'w-full text-left p-2 rounded ' + (i === cur ? 'bg-indigo-50 font-bold' : (i <= max || tourCompleted ? 'hover:bg-slate-100' : 'opacity-50')); 
+                b.textContent = (i+1)+'. '+s.title + (s.isHidden ? ' 🤫' : ''); 
+                if(i <= max || tourCompleted) b.onclick = () => { load(i); document.getElementById('menuPanel').classList.add('hidden'); }; 
+                links.appendChild(b); 
+            });
+        }
+
+        document.getElementById('menuBtn').onclick = () => document.getElementById('menuPanel').classList.toggle('hidden');
+        document.getElementById('expMomentumToggle').onchange = (e) => momentum = e.target.checked;
+        
+        document.getElementById('transitTrigger').onclick = () => { 
+            const s = scenes[cur]; 
+            if (s.transitConfig) { 
+                document.getElementById('qText').textContent = s.transitConfig.question; 
+                document.getElementById('qAns').value = ''; 
+                document.getElementById('quiz').classList.remove('hidden'); 
+            } 
+        };
+        
+        document.getElementById('qSub').onclick = () => { 
+            const s = scenes[cur]; 
+            if (document.getElementById('qAns').value.trim().toLowerCase() === s.transitConfig.answer.toLowerCase()) { 
+                document.getElementById('quiz').classList.add('hidden'); 
+                document.getElementById('transitContainer').classList.add('hidden'); 
+                const nxt = getNextVis(cur);
+                if (nxt !== -1) { 
+                    max = Math.max(max, nxt); 
+                    load(nxt); 
+                } 
+                checkCompletion();
+            } else {
+                alert("Incorrect answer. Please try again!");
+            }
+        };
+        
+        function animate() { 
+            requestAnimationFrame(animate); 
+            if (isD) { lonVel = lon - prevLon; latVel = lat - prevLat; } else if (momentum) { lon += lonVel; lat += latVel; lonVel *= 0.92; latVel *= 0.92; }
+            lat = Math.max(-85, Math.min(85, lat));
+            if (lat === 85 || lat === -85) latVel = 0;
+            prevLon = lon; prevLat = lat;
+
+            const phi = THREE.MathUtils.degToRad(90 - lat), theta = THREE.MathUtils.degToRad(lon); 
+            camera.lookAt(new THREE.Vector3(500 * Math.sin(phi) * Math.cos(theta), 500 * Math.cos(phi), 500 * Math.sin(phi) * Math.sin(theta))); 
+            renderer.render(scene, camera); 
+            
+            const s = scenes[cur]; 
+            if (s && s.hotspots) {
+                s.hotspots.forEach((h, i) => { 
+                    const div = document.getElementById('h'+i); 
+                    if (!div) return; 
+                    const v = new THREE.Vector3(h.pos.x, h.pos.y, h.pos.z).project(camera); 
+                    if(v.z < 1) { 
+                        div.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px'; 
+                        div.style.top = (v.y * -0.5 + 0.5) * window.innerHeight + 'px'; 
+                        div.style.display = 'flex'; 
+                    } else div.style.display = 'none'; 
+                }); 
+            }
+            
+            if (activeP !== null) {
+                const p = document.getElementById('popup');
+                const m = document.getElementById('h'+activeP);
+                if (m && m.style.display !== 'none') {
+                    p.style.left = m.style.left;
+                    p.style.top = (parseFloat(m.style.top) - p.offsetHeight - 15) + 'px';
+                    p.style.visibility = 'visible';
+                } else {
+                    p.style.visibility = 'hidden';
+                }
+            }
+        }
+        init();
+    </script>
+</body>
+</html>
