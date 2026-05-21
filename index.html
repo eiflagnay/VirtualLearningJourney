@@ -382,7 +382,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+        // IMPORT CHANGED: We swapped signInWithPopup for signInWithRedirect and getRedirectResult
+        import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -402,6 +403,12 @@
 
         let currentUser = null;
         let currentCredits = 0;
+
+        // Catch any errors that happen during the redirect bounce-back
+        getRedirectResult(auth).catch((error) => {
+            console.error("Redirect Sign-in Error:", error);
+            alert("Authentication Error: " + error.message);
+        });
 
         // --- State Management ---
         let scenes = [];
@@ -977,94 +984,95 @@
             return ytMatch ? `https://www.youtube.com/embed/${ytMatch[1]}` : null;
         }
 
-        // --- Visual Map Logic (Builder side) ---
-        function drawSVGLine(svg, x1, y1, x2, y2, color, dashed) {
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            const dx = x2 - x1;
-            const dy = y2 - y1;
-            // Slight curve to prevent identical reverse lines from overlapping perfectly
-            const cx = x1 + dx / 2 - dy * 0.15; 
-            const cy = y1 + dy / 2 + dx * 0.15;
-            
-            path.setAttribute('d', `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
-            path.setAttribute('stroke', color);
-            path.setAttribute('stroke-width', '4');
-            path.setAttribute('fill', 'none');
-            if (dashed) path.setAttribute('stroke-dasharray', '8,8');
-            
-            const colorName = color === '#3b82f6' ? 'blue' : 'purple';
-            path.setAttribute('marker-end', `url(#arrow-${colorName})`);
-            svg.appendChild(path);
-        }
-
-        document.getElementById('openBuilderMapBtn').onclick = () => {
-            if (scenes.length === 0) { setStatus("Create some scenes first!", "error"); return; }
-            
-            const m = document.getElementById('mapModal');
-            m.classList.remove('hidden');
-            setTimeout(() => m.classList.remove('opacity-0'), 10);
-            
-            const cont = document.getElementById('mapNodesContainer');
-            const svg = document.getElementById('mapLines');
-            
-            // Clean up old elements
-            Array.from(svg.querySelectorAll('path')).forEach(p => p.remove());
-            Array.from(cont.children).forEach(c => { if(c.tagName !== 'svg' && c.tagName !== 'SVG') c.remove(); });
-            
-            const els = {};
-            scenes.forEach((s) => {
-                const b = document.createElement('button');
-                b.className = 'relative z-10 px-5 py-3 rounded-xl font-bold shadow-xl border-2 transition-transform hover:scale-105 ' + 
-                              (s.id === activeSceneId ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-800 border-slate-200');
-                b.innerHTML = s.title + (s.isHidden ? ' <span title="Hidden Scene">🤫</span>' : '');
-                b.onclick = () => { 
-                    document.getElementById('closeMapBtn').click(); 
-                    switchScene(s.id);
-                };
-                cont.appendChild(b);
-                els[s.id] = b;
+        // Auto-close dropdown when a button is clicked on mobile
+        document.querySelectorAll('#toolbarMenu button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (window.innerWidth < 768) {
+                    toolbarMenu.classList.add('hidden');
+                    toolbarMenu.classList.remove('flex');
+                }
             });
+        });
+
+        // --- Week 1: Identity & User Profiles (Auth & Firestore) ---
+        onAuthStateChanged(auth, async (user) => {
+            const overlay = document.getElementById('loginOverlay');
+            const profile = document.getElementById('userProfile');
             
-            // Draw lines after nodes have been physically laid out by flexbox
-            setTimeout(() => {
-                const sR = svg.getBoundingClientRect();
-                scenes.forEach((s, i) => {
-                    const f = els[s.id];
-                    if(!f) return;
-                    const fR = f.getBoundingClientRect();
-                    const fx = fR.left + fR.width/2 - sR.left;
-                    const fy = fR.top + fR.height/2 - sR.top;
+            if (user) {
+                currentUser = user;
+                // Fade out and hide login screen
+                overlay.classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => overlay.classList.add('hidden'), 500);
+                
+                profile.classList.remove('hidden');
+                profile.classList.add('flex');
+                
+                // Set User Avatar
+                const avatar = document.getElementById('userAvatar');
+                if(user.photoURL) {
+                    avatar.innerHTML = `<img src="${user.photoURL}" class="w-full h-full object-cover">`;
+                } else {
+                    avatar.textContent = user.email ? user.email.charAt(0).toUpperCase() : 'U';
+                }
+
+                try {
+                    // Check Firestore for user profile / Credit Wallet
+                    const userRef = doc(db, 'users', user.uid);
+                    const userSnap = await getDoc(userRef);
                     
-                    s.hotspots.forEach(h => {
-                        if(h.targetSceneId && els[h.targetSceneId]) {
-                            const t = els[h.targetSceneId];
-                            const tR = t.getBoundingClientRect();
-                            const tx = tR.left + tR.width/2 - sR.left;
-                            const ty = tR.top + tR.height/2 - sR.top;
-                            drawSVGLine(svg, fx, fy, tx, ty, '#3b82f6', false);
+                    if (!userSnap.exists()) {
+                        // New user! Give them 1 free credit to start
+                        await setDoc(userRef, {
+                            email: user.email,
+                            exportCredits: 1,
+                            createdAt: new Date().toISOString()
+                        });
+                    }
+
+                    // Listen for real-time credit updates
+                    onSnapshot(userRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            currentCredits = docSnap.data().exportCredits || 0;
+                            document.getElementById('creditBalance').textContent = `${currentCredits} Credit${currentCredits === 1 ? '' : 's'}`;
                         }
                     });
-                    
-                    if(s.transitConfig && i < scenes.length - 1) {
-                        const t = els[scenes[i+1].id];
-                        if(t) {
-                            const tR = t.getBoundingClientRect();
-                            const tx = tR.left + tR.width/2 - sR.left;
-                            const ty = tR.top + tR.height/2 - sR.top;
-                            drawSVGLine(svg, fx, fy, tx, ty, '#9333ea', true);
-                        }
-                    }
-                });
-            }, 50);
+                } catch (dbError) {
+                    console.error("Firestore Error:", dbError);
+                    // Silently fail if Firestore isn't set up yet so the app doesn't break
+                }
+
+            } else {
+                // User is logged out
+                currentUser = null;
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.remove('opacity-0', 'pointer-events-none'), 10);
+                
+                profile.classList.add('hidden');
+                profile.classList.remove('flex');
+            }
+        });
+
+        document.getElementById('googleSignInBtn').onclick = () => {
+            console.log("Sign-in button clicked! Starting redirect...");
+            document.getElementById('googleSignInBtn').innerHTML = "Redirecting to Google...";
+            
+            // Switch to redirect method to bypass pop-up blockers
+            signInWithRedirect(auth, provider).catch(err => {
+                console.error("Google Sign-In Trigger Error:", err);
+                alert("Could not start sign in: " + err.message);
+                document.getElementById('googleSignInBtn').innerHTML = "Sign in with Google";
+            });
         };
 
-        document.getElementById('closeMapBtn').onclick = () => {
-            const m = document.getElementById('mapModal');
-            m.classList.add('opacity-0');
-            setTimeout(() => m.classList.add('hidden'), 300);
+        document.getElementById('signOutBtn').onclick = () => {
+            signOut(auth).then(() => {
+                // Clear out builder state on logout
+                scenes = [];
+                switchScene(null);
+            });
         };
 
-        // --- Controls & Event Listeners ---
         document.getElementById('aboutBtn').onclick = () => {
             document.getElementById('aboutModal').classList.remove('hidden');
         };
