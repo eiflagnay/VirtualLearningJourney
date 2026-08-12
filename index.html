@@ -1298,7 +1298,7 @@
             activePopupIndex = null;
             const p = document.getElementById('infoPopup');
             p.classList.remove('opacity-100');
-            p.style.visibility = '';
+            p.style.visibility = ''; // Reset visibility state
             setTimeout(() => { p.classList.add('hidden'); document.getElementById('popupVideo').src = ''; }, 200);
         }
 
@@ -1800,13 +1800,13 @@
             const dy = y2 - y1;
             const cx = x1 + dx / 2 - dy * 0.15;
             const cy = y1 + dy / 2 + dx * 0.15;
-            path.setAttribute('d', "M " + x1 + " " + y1 + " Q " + cx + " " + cy + " " + x2 + " " + y2);
+            path.setAttribute('d', `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
             path.setAttribute('stroke', color);
             path.setAttribute('stroke-width', '4');
             path.setAttribute('fill', 'none');
             if (dashed) path.setAttribute('stroke-dasharray', '8,8');
             const cName = color === '#3b82f6' ? 'blue' : 'purple';
-            path.setAttribute('marker-end', "url(#arrow-" + cName + ")");
+            path.setAttribute('marker-end', `url(#arrow-${cName})`);
             svg.appendChild(path);
         }
 
@@ -1825,7 +1825,9 @@
             const els = {};
             scenes.forEach((s) => {
                 const b = document.createElement('button');
-                b.className = "relative z-10 px-5 py-3 rounded-xl font-bold shadow-xl border-2 transition-transform hover:scale-105 " + (s.id === activeSceneId ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-800 border-slate-200');
+                b.className = `relative z-10 px-5 py-3 rounded-xl font-bold shadow-xl border-2 transition-transform hover:scale-105 ${
+                    s.id === activeSceneId ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-800 border-slate-200'
+                }`;
                 b.textContent = s.title + (s.isHidden ? ' 🤫' : '');
                 b.onclick = () => {
                     closeBuilderMap();
@@ -2717,7 +2719,7 @@
         init();
     </${"script"}>
 </body>
-</html>\`;
+</html>`;
 
                 const blob = new Blob([exportHtml], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);
