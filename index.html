@@ -220,6 +220,15 @@
                     </select>
                     <p class="text-xs text-slate-400 mt-1">Make this hotspot a portal that directly jumps to another scene.</p>
                 </div>
+                
+                <!-- NEW: Hidden Hotspot Toggle -->
+                <div class="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700">Hide from Student</label>
+                        <p class="text-xs text-slate-500">Student must discover this point by clicking.</p>
+                    </div>
+                    <input type="checkbox" id="hsIsHidden" class="w-5 h-5 accent-indigo-600 cursor-pointer">
+                </div>
             </div>
             <div class="flex justify-between items-center mt-6 pt-2">
                 <button id="deleteModalHsBtn" class="text-red-600 hover:bg-red-50 px-3 py-1.5 rounded text-sm font-medium transition-colors hidden">Delete</button>
@@ -599,6 +608,7 @@
                 document.getElementById('hsTitle').classList.remove('border-red-500');
                 document.getElementById('hsDesc').value = '';
                 document.getElementById('hsVideo').value = '';
+                document.getElementById('hsIsHidden').checked = false;
 
                 const select = document.getElementById('hsTargetScene');
                 select.innerHTML = '<option value="">None (Standard Point)</option>';
@@ -676,12 +686,31 @@
                 const vector = new THREE.Vector3(hs.pos.x, hs.pos.y, hs.pos.z);
                 vector.project(camera);
 
-                // Add visited class if already found
-                if(visitedHotspots[activeSceneId] && visitedHotspots[activeSceneId].has(idx)) {
-                    marker.classList.add('visited');
+                const isFound = visitedHotspots[activeSceneId] && visitedHotspots[activeSceneId].has(idx);
+
+                // Base classes
+                marker.className = 'hotspot-marker absolute flex items-center justify-center text-white text-sm font-bold pointer-events-auto cursor-pointer shadow-lg transition-all duration-300';
+                
+                if (isEditMode) {
+                    marker.classList.add('w-11', 'h-11', 'border-2', 'rounded-full');
+                    if (hs.isHiddenHotspot) {
+                        marker.classList.add('bg-slate-700', 'border-dashed', 'border-slate-400');
+                        marker.innerHTML = '🤫';
+                    } else {
+                        marker.classList.add('bg-indigo-500', 'border-white');
+                        marker.innerHTML = 'i';
+                    }
                 } else {
-                    marker.classList.remove('visited');
+                    if (hs.isHiddenHotspot && !isFound) {
+                        marker.classList.add('w-20', 'h-20', 'opacity-0', 'bg-transparent', 'border-none', 'shadow-none');
+                        marker.innerHTML = '';
+                    } else {
+                        marker.classList.add('w-11', 'h-11', 'border-2', 'rounded-full', 'bg-indigo-500', 'border-white');
+                        marker.innerHTML = 'i';
+                    }
                 }
+
+                if (isFound && !isEditMode) marker.classList.add('visited');
 
                 if (vector.z < 1) {
                     const x = (vector.x * 0.5 + 0.5) * renderer.domElement.clientWidth;
@@ -869,12 +898,43 @@
             s.hotspots.forEach((hs, idx) => {
                 const marker = document.createElement('div');
                 marker.id = `marker-${idx}`;
-                marker.className = 'hotspot-marker absolute w-11 h-11 bg-indigo-500 border-2 border-white rounded-full flex items-center justify-center text-white text-sm font-bold pointer-events-auto cursor-pointer shadow-lg';
-                marker.innerHTML = 'i';
+
+                const isFound = visitedHotspots[activeSceneId] && visitedHotspots[activeSceneId].has(idx);
+
+                // Base classes
+                marker.className = 'hotspot-marker absolute flex items-center justify-center text-white text-sm font-bold pointer-events-auto cursor-pointer shadow-lg transition-all duration-300';
+                
+                if (isEditMode) {
+                    marker.classList.add('w-11', 'h-11', 'border-2', 'rounded-full');
+                    if (hs.isHiddenHotspot) {
+                        marker.classList.add('bg-slate-700', 'border-dashed', 'border-slate-400');
+                        marker.innerHTML = '🤫';
+                    } else {
+                        marker.classList.add('bg-indigo-500', 'border-white');
+                        marker.innerHTML = 'i';
+                    }
+                } else {
+                    if (hs.isHiddenHotspot && !isFound) {
+                        marker.classList.add('w-20', 'h-20', 'opacity-0', 'bg-transparent', 'border-none', 'shadow-none');
+                        marker.innerHTML = '';
+                    } else {
+                        marker.classList.add('w-11', 'h-11', 'border-2', 'rounded-full', 'bg-indigo-500', 'border-white');
+                        marker.innerHTML = 'i';
+                    }
+                }
+
+                if (isFound && !isEditMode) marker.classList.add('visited');
+
                 marker.onclick = (e) => {
                     e.stopPropagation();
                     if (!isEditMode) {
                         visitedHotspots[activeSceneId].add(idx);
+                        
+                        // Reveal animation when found
+                        marker.classList.remove('w-20', 'h-20', 'opacity-0', 'bg-transparent', 'border-none', 'shadow-none');
+                        marker.classList.add('w-11', 'h-11', 'border-2', 'rounded-full', 'bg-indigo-500', 'border-white', 'visited');
+                        marker.innerHTML = 'i';
+
                         updateProgressHud();
                         if (s.transitConfig && visitedHotspots[activeSceneId].size === s.hotspots.length && !unlockedScenesInBuilder.has(activeSceneId)) {
                             document.getElementById('builderTransitBtnContainer').classList.remove('hidden');
@@ -889,6 +949,7 @@
                         document.getElementById('hsTitle').classList.remove('border-red-500');
                         document.getElementById('hsDesc').value = hs.desc || '';
                         document.getElementById('hsVideo').value = hs.videoUrl || '';
+                        document.getElementById('hsIsHidden').checked = hs.isHiddenHotspot || false;
 
                         const select = document.getElementById('hsTargetScene');
                         select.innerHTML = '<option value="">None (Standard Point)</option>';
@@ -1061,8 +1122,6 @@
             }
         });
 
-        // CHANGED: Now using signInWithPopup instead of signInWithRedirect.
-        // Popups don't rely on third-party cookies, so they work reliably on GitHub Pages.
         document.getElementById('googleSignInBtn').onclick = () => {
             console.log("Sign-in button clicked! Opening popup...");
             const btn = document.getElementById('googleSignInBtn');
@@ -1251,12 +1310,14 @@
                 s.hotspots[currentEditingIndex].desc = document.getElementById('hsDesc').value.trim();
                 s.hotspots[currentEditingIndex].videoUrl = document.getElementById('hsVideo').value.trim();
                 s.hotspots[currentEditingIndex].targetSceneId = targetSceneId || null;
+                s.hotspots[currentEditingIndex].isHiddenHotspot = document.getElementById('hsIsHidden').checked;
             } else if (pendingHotspotPos) {
                 s.hotspots.push({
                     title: t,
                     desc: document.getElementById('hsDesc').value.trim(),
                     videoUrl: document.getElementById('hsVideo').value.trim(),
                     targetSceneId: targetSceneId || null,
+                    isHiddenHotspot: document.getElementById('hsIsHidden').checked,
                     pos: { x: pendingHotspotPos.x, y: pendingHotspotPos.y, z: pendingHotspotPos.z }
                 });
             }
@@ -1497,6 +1558,7 @@
         body { margin: 0; overflow: hidden; background: #000; position: fixed; width: 100%; height: 100%; touch-action: none; overscroll-behavior: none; }
         .hotspot { position: absolute; width: 44px; height: 44px; font-size: 16px; background: #6366f1; border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer; transform: translate(-50%, -50%); box-shadow: 0 0 10px rgba(0,0,0,0.5); font-weight: bold; transition: background 0.3s; z-index: 10; }
         .visited { background: #10b981 !important; }
+        .invisible-hotspot { opacity: 0 !important; width: 80px !important; height: 80px !important; background: transparent !important; border: none !important; box-shadow: none !important; }
         .hud-complete { background-color: #10b981 !important; border-color: #059669 !important; animation: pulseGreen 2s infinite; }
         #menu { position: fixed; bottom: 20px; right: 20px; z-index: 100; }
         @keyframes bounce { 0%, 100% { transform: translateY(0) translateX(-50%); } 50% { transform: translateY(-10px) translateX(-50%); } }
@@ -1860,13 +1922,28 @@
 
             document.getElementById('overlay').innerHTML = ''; document.getElementById('transitContainer').classList.add('hidden'); closeP();
             s.hotspots.forEach((h, i) => {
-                const div = document.createElement('div'); div.className = 'hotspot'; div.id = 'h'+i; div.innerHTML = 'i';
+                const div = document.createElement('div'); div.className = 'hotspot'; div.id = 'h'+i; 
                 div.style.pointerEvents = 'auto';
-                if(vis[cur].has(i)) div.classList.add('visited');
+
+                const isFound = vis[cur].has(i);
+
+                if (h.isHiddenHotspot && !isFound) {
+                    div.classList.add('invisible-hotspot');
+                    div.innerHTML = '';
+                } else {
+                    div.innerHTML = 'i';
+                }
+
+                if(isFound) div.classList.add('visited');
 
                 div.onclick = (e) => {
                     e.stopPropagation();
+
+                    // Reveal it!
+                    div.classList.remove('invisible-hotspot');
+                    div.innerHTML = 'i';
                     div.classList.add('visited');
+
                     vis[cur].add(i);
                     updateHud();
                     showP(h, i);
@@ -1900,7 +1977,7 @@
         function showP(h, idx) {
             activeP = idx;
             document.getElementById('pTitle').textContent = h.title; document.getElementById('pDesc').textContent = h.desc;
-            const vid = document.getElementById('pVid'); const yt = h.videoUrl.match(/(?:youtu\\.be\\/|youtube\\.com\\/(?:embed\\/|v\\/|watch\\?v=))([\\w-]{11})/);
+            const vid = document.getElementById('pVid'); const yt = h.videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=))([\w-]{11})/);
             if(yt) { vid.src = 'https://www.youtube.com/embed/'+yt[1]; vid.classList.remove('hidden'); } else { vid.src = ''; vid.classList.add('hidden'); }
 
             const tBtn = document.getElementById('pTransitBtn');
