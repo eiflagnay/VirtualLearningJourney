@@ -16,9 +16,9 @@
 
         @keyframes pulse-blue { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
         @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
-        .hotspot-marker { animation: pulse-blue 2s infinite; transition: transform 0.2s; pointer-events: auto; }
+        .hotspot-marker { animation: pulse-blue 2s infinite; transition: transform 0.2s, background-color 0.2s, opacity 0.2s; pointer-events: auto; }
         .hotspot-marker:hover { transform: scale(1.1); }
-        .visited { background-color: #10b981 !important; animation: none; }
+        .visited { background-color: #10b981 !important; border-color: white !important; color: white !important; opacity: 1 !important; animation: none; }
         .hud-complete { background-color: #10b981 !important; border-color: #059669 !important; animation: pulse-green 2s infinite; }
 
         #floatingMenu { position: fixed; bottom: 30px; right: 30px; z-index: 50; touch-action: none; }
@@ -93,6 +93,14 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
                         Transit Logic
                     </button>
+                    <button id="addAudioBtn" class="w-full md:w-auto justify-start bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                        <span id="addAudioBtnText">Add Audio</span>
+                    </button>
+                    <button id="clearAudioBtn" class="hidden w-full md:w-auto justify-start bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
+                        ✕ Clear Audio
+                    </button>
+                    <input type="file" id="audioUploadInput" class="hidden" accept="audio/*">
                     <button id="importBtn" class="w-full md:w-auto justify-start bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md font-bold transition-colors text-sm flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                         Import
@@ -220,12 +228,10 @@
                     </select>
                     <p class="text-xs text-slate-400 mt-1">Make this hotspot a portal that directly jumps to another scene.</p>
                 </div>
-                
-                <!-- NEW: Hidden Hotspot Toggle -->
-                <div class="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between">
+                <div class="pt-3 mt-2 border-t border-slate-100 flex items-center justify-between">
                     <div>
-                        <label class="block text-sm font-bold text-slate-700">Hide from Student</label>
-                        <p class="text-xs text-slate-500">Student must discover this point by clicking.</p>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Hidden Point</label>
+                        <p class="text-xs text-slate-400">Marker is invisible until the user finds and clicks it.</p>
                     </div>
                     <input type="checkbox" id="hsIsHidden" class="w-5 h-5 accent-indigo-600 cursor-pointer">
                 </div>
@@ -373,8 +379,9 @@
                     <strong class="text-slate-700">Key Features:</strong>
                     <ul class="list-disc pl-5 mt-1 space-y-1">
                         <li>Upload and link 360° panoramas</li>
-                        <li>Interactive hotspots with text, video, and portals</li>
+                        <li>Interactive hotspots with text, video, portals, and hidden clues</li>
                         <li>Linear quiz checkpoints (Transit Logic)</li>
+                        <li>Looping background audio per scene</li>
                         <li>✨ Gamified Fast Travel Map and Hidden Bonus Scenes</li>
                         <li>✨ Gemini AI integration for auto-filling content</li>
                         <li>1-Click Export to a standalone HTML file</li>
@@ -418,6 +425,8 @@
         let scenes = [];
         let activeSceneId = null;
         let isEditMode = true;
+        let currentBgAudio = new Audio();
+        currentBgAudio.loop = true;
         let pendingHotspotPos = null;
         let currentEditingIndex = null;
         let activePopupIndex = null;
@@ -686,31 +695,12 @@
                 const vector = new THREE.Vector3(hs.pos.x, hs.pos.y, hs.pos.z);
                 vector.project(camera);
 
-                const isFound = visitedHotspots[activeSceneId] && visitedHotspots[activeSceneId].has(idx);
-
-                // Base classes
-                marker.className = 'hotspot-marker absolute flex items-center justify-center text-white text-sm font-bold pointer-events-auto cursor-pointer shadow-lg transition-all duration-300';
-                
-                if (isEditMode) {
-                    marker.classList.add('w-11', 'h-11', 'border-2', 'rounded-full');
-                    if (hs.isHiddenHotspot) {
-                        marker.classList.add('bg-slate-700', 'border-dashed', 'border-slate-400');
-                        marker.innerHTML = '🤫';
-                    } else {
-                        marker.classList.add('bg-indigo-500', 'border-white');
-                        marker.innerHTML = 'i';
-                    }
+                // Add visited class if already found
+                if(visitedHotspots[activeSceneId] && visitedHotspots[activeSceneId].has(idx)) {
+                    marker.classList.add('visited');
                 } else {
-                    if (hs.isHiddenHotspot && !isFound) {
-                        marker.classList.add('w-20', 'h-20', 'opacity-0', 'bg-transparent', 'border-none', 'shadow-none');
-                        marker.innerHTML = '';
-                    } else {
-                        marker.classList.add('w-11', 'h-11', 'border-2', 'rounded-full', 'bg-indigo-500', 'border-white');
-                        marker.innerHTML = 'i';
-                    }
+                    marker.classList.remove('visited');
                 }
-
-                if (isFound && !isEditMode) marker.classList.add('visited');
 
                 if (vector.z < 1) {
                     const x = (vector.x * 0.5 + 0.5) * renderer.domElement.clientWidth;
@@ -828,6 +818,9 @@
             closePopup();
             document.getElementById('builderTransitBtnContainer').classList.add('hidden');
 
+            currentBgAudio.pause();
+            currentBgAudio.src = '';
+
             // Persist hotspot discovery natively per scene
             if (id && !visitedHotspots[id]) visitedHotspots[id] = new Set();
 
@@ -886,6 +879,17 @@
                 renderHotspots();
                 updateProgressHud();
             }
+            
+            if (s.localAudioSrc || s.audioSrc) {
+                currentBgAudio.src = s.localAudioSrc || s.audioSrc;
+                currentBgAudio.play().catch(e => console.log("Audio blocked:", e));
+                document.getElementById('addAudioBtnText').textContent = "Change Audio";
+                document.getElementById('clearAudioBtn').classList.remove('hidden');
+            } else {
+                document.getElementById('addAudioBtnText').textContent = "Add Audio";
+                document.getElementById('clearAudioBtn').classList.add('hidden');
+            }
+            
             renderFloatingMenu();
         }
 
@@ -899,42 +903,31 @@
                 const marker = document.createElement('div');
                 marker.id = `marker-${idx}`;
 
-                const isFound = visitedHotspots[activeSceneId] && visitedHotspots[activeSceneId].has(idx);
+                let baseClass = 'hotspot-marker absolute w-11 h-11 border-2 rounded-full flex items-center justify-center text-sm font-bold pointer-events-auto cursor-pointer shadow-lg transition-all ';
 
-                // Base classes
-                marker.className = 'hotspot-marker absolute flex items-center justify-center text-white text-sm font-bold pointer-events-auto cursor-pointer shadow-lg transition-all duration-300';
-                
                 if (isEditMode) {
-                    marker.classList.add('w-11', 'h-11', 'border-2', 'rounded-full');
-                    if (hs.isHiddenHotspot) {
-                        marker.classList.add('bg-slate-700', 'border-dashed', 'border-slate-400');
-                        marker.innerHTML = '🤫';
+                    if (hs.isHidden) {
+                        baseClass += 'bg-slate-500 border-white text-white border-dashed opacity-70';
+                        marker.innerHTML = '?';
                     } else {
-                        marker.classList.add('bg-indigo-500', 'border-white');
+                        baseClass += 'bg-indigo-500 border-white text-white';
                         marker.innerHTML = 'i';
                     }
                 } else {
-                    if (hs.isHiddenHotspot && !isFound) {
-                        marker.classList.add('w-20', 'h-20', 'opacity-0', 'bg-transparent', 'border-none', 'shadow-none');
-                        marker.innerHTML = '';
+                    if (hs.isHidden) {
+                        baseClass += 'opacity-0 hover:opacity-30 bg-white border-white text-transparent hover:text-slate-800';
+                        marker.innerHTML = '?';
                     } else {
-                        marker.classList.add('w-11', 'h-11', 'border-2', 'rounded-full', 'bg-indigo-500', 'border-white');
+                        baseClass += 'bg-indigo-500 border-white text-white';
                         marker.innerHTML = 'i';
                     }
                 }
 
-                if (isFound && !isEditMode) marker.classList.add('visited');
-
+                marker.className = baseClass;
                 marker.onclick = (e) => {
                     e.stopPropagation();
                     if (!isEditMode) {
                         visitedHotspots[activeSceneId].add(idx);
-                        
-                        // Reveal animation when found
-                        marker.classList.remove('w-20', 'h-20', 'opacity-0', 'bg-transparent', 'border-none', 'shadow-none');
-                        marker.classList.add('w-11', 'h-11', 'border-2', 'rounded-full', 'bg-indigo-500', 'border-white', 'visited');
-                        marker.innerHTML = 'i';
-
                         updateProgressHud();
                         if (s.transitConfig && visitedHotspots[activeSceneId].size === s.hotspots.length && !unlockedScenesInBuilder.has(activeSceneId)) {
                             document.getElementById('builderTransitBtnContainer').classList.remove('hidden');
@@ -949,7 +942,7 @@
                         document.getElementById('hsTitle').classList.remove('border-red-500');
                         document.getElementById('hsDesc').value = hs.desc || '';
                         document.getElementById('hsVideo').value = hs.videoUrl || '';
-                        document.getElementById('hsIsHidden').checked = hs.isHiddenHotspot || false;
+                        document.getElementById('hsIsHidden').checked = hs.isHidden || false;
 
                         const select = document.getElementById('hsTargetScene');
                         select.innerHTML = '<option value="">None (Standard Point)</option>';
@@ -1122,6 +1115,8 @@
             }
         });
 
+        // CHANGED: Now using signInWithPopup instead of signInWithRedirect.
+        // Popups don't rely on third-party cookies, so they work reliably on GitHub Pages.
         document.getElementById('googleSignInBtn').onclick = () => {
             console.log("Sign-in button clicked! Opening popup...");
             const btn = document.getElementById('googleSignInBtn');
@@ -1183,7 +1178,7 @@
             customPrompt("Enter Scene Name:", `Scene ${scenes.length + 1}`, (name) => {
                 if (!name || !name.trim()) return;
                 const id = 's' + Date.now();
-                scenes.push({ id, title: name.trim(), imageSrc: null, localImageSrc: null, hotspots: [], transitConfig: null, isHidden: false });
+                scenes.push({ id, title: name.trim(), imageSrc: null, localImageSrc: null, audioSrc: null, localAudioSrc: null, hotspots: [], transitConfig: null, isHidden: false });
                 switchScene(id);
                 fabPanel.classList.add('hidden');
             });
@@ -1196,6 +1191,59 @@
 
         document.getElementById('welcomeCreateBtn').onclick = () => {
             triggerCreateScene();
+        };
+
+        // --- Audio Upload & Control ---
+        document.getElementById('addAudioBtn').onclick = () => {
+            if (!activeSceneId) { setStatus("Create or select a scene first.", "error"); return; }
+            document.getElementById('audioUploadInput').click();
+        };
+
+        document.getElementById('clearAudioBtn').onclick = () => {
+            const s = scenes.find(sc => sc.id === activeSceneId);
+            if (!s) return;
+            s.audioSrc = null;
+            s.localAudioSrc = null;
+            currentBgAudio.pause();
+            currentBgAudio.src = '';
+            document.getElementById('addAudioBtnText').textContent = "Add Audio";
+            document.getElementById('clearAudioBtn').classList.add('hidden');
+            setStatus("Audio removed from scene.", "success");
+        };
+
+        document.getElementById('audioUploadInput').onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const s = scenes.find(sc => sc.id === activeSceneId);
+            if (!s) return;
+
+            s.localAudioSrc = URL.createObjectURL(file);
+            currentBgAudio.src = s.localAudioSrc;
+            currentBgAudio.play().catch(err => console.log("Autoplay blocked:", err));
+            
+            document.getElementById('addAudioBtnText').textContent = "Change Audio";
+            document.getElementById('clearAudioBtn').classList.remove('hidden');
+            setStatus(`Uploading audio ${file.name}...`, "info");
+
+            const storageRef = ref(storage, 'scenes_audio/' + Date.now() + '_' + file.name);
+            const uploadTask = uploadBytesResumable(storageRef, file);
+
+            uploadTask.on('state_changed',
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    setStatus(`Uploading Audio... ${Math.round(progress)}%`, "info");
+                },
+                (error) => {
+                    setStatus(`Audio upload failed: ${error.message}`, "error");
+                },
+                async () => {
+                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                    s.audioSrc = downloadURL;
+                    setStatus("Audio upload complete! Saved to cloud.", "success");
+                }
+            );
+            e.target.value = '';
         };
 
         // --- IMPORT TOUR FEATURE ---
@@ -1304,20 +1352,21 @@
             if (!s) return;
 
             const targetSceneId = document.getElementById('hsTargetScene').value;
+            const isHidden = document.getElementById('hsIsHidden').checked;
 
             if (currentEditingIndex !== null) {
                 s.hotspots[currentEditingIndex].title = t;
                 s.hotspots[currentEditingIndex].desc = document.getElementById('hsDesc').value.trim();
                 s.hotspots[currentEditingIndex].videoUrl = document.getElementById('hsVideo').value.trim();
                 s.hotspots[currentEditingIndex].targetSceneId = targetSceneId || null;
-                s.hotspots[currentEditingIndex].isHiddenHotspot = document.getElementById('hsIsHidden').checked;
+                s.hotspots[currentEditingIndex].isHidden = isHidden;
             } else if (pendingHotspotPos) {
                 s.hotspots.push({
                     title: t,
                     desc: document.getElementById('hsDesc').value.trim(),
                     videoUrl: document.getElementById('hsVideo').value.trim(),
                     targetSceneId: targetSceneId || null,
-                    isHiddenHotspot: document.getElementById('hsIsHidden').checked,
+                    isHidden: isHidden,
                     pos: { x: pendingHotspotPos.x, y: pendingHotspotPos.y, z: pendingHotspotPos.z }
                 });
             }
@@ -1542,7 +1591,7 @@
                 const finalFileName = safeFileName.endsWith('.html') ? safeFileName : safeFileName + '.html';
 
                 const exportScenes = scenes.map(s => {
-                    const { localImageSrc, ...rest } = s;
+                    const { localImageSrc, localAudioSrc, ...rest } = s;
                     return rest;
                 });
 
@@ -1557,8 +1606,9 @@
     <style>
         body { margin: 0; overflow: hidden; background: #000; position: fixed; width: 100%; height: 100%; touch-action: none; overscroll-behavior: none; }
         .hotspot { position: absolute; width: 44px; height: 44px; font-size: 16px; background: #6366f1; border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer; transform: translate(-50%, -50%); box-shadow: 0 0 10px rgba(0,0,0,0.5); font-weight: bold; transition: background 0.3s; z-index: 10; }
-        .visited { background: #10b981 !important; }
-        .invisible-hotspot { opacity: 0 !important; width: 80px !important; height: 80px !important; background: transparent !important; border: none !important; box-shadow: none !important; }
+        .visited { background: #10b981 !important; border-color: #fff !important; color: #fff !important; opacity: 1 !important; box-shadow: 0 0 10px rgba(0,0,0,0.5) !important; }
+        .hidden-hotspot { background: transparent !important; border-color: transparent !important; color: transparent !important; box-shadow: none !important; transition: all 0.3s; }
+        .hidden-hotspot:hover { background: rgba(255,255,255,0.2) !important; border-color: rgba(255,255,255,0.4) !important; color: white !important; }
         .hud-complete { background-color: #10b981 !important; border-color: #059669 !important; animation: pulseGreen 2s infinite; }
         #menu { position: fixed; bottom: 20px; right: 20px; z-index: 100; }
         @keyframes bounce { 0%, 100% { transform: translateY(0) translateX(-50%); } 50% { transform: translateY(-10px) translateX(-50%); } }
@@ -1714,13 +1764,15 @@
     </div>
 
     <${"script"}>
-        const scenes = ${JSON.stringify(exportScenes)};
-        const tourIntro = ${JSON.stringify(tourIntro)};
+        const scenes = \${JSON.stringify(exportScenes)};
+        const tourIntro = \${JSON.stringify(tourIntro)};
         let cur = 0, max = 0, lon = 0, lat = 0;
         let scene, camera, renderer, sphere;
         let vis = {};
         let activeP = null;
         let tourCompleted = false;
+        let bgAudio = new Audio();
+        bgAudio.loop = true;
 
         let isD = false, mx, my, mL, mLat;
         let momentum = true, lonVel = 0, latVel = 0, prevLon = 0, prevLat = 0;
@@ -1863,6 +1915,9 @@
                     const overlay = document.getElementById('introOverlay');
                     overlay.classList.add('opacity-0');
                     setTimeout(() => overlay.classList.add('hidden'), 500);
+                    if (bgAudio.src && bgAudio.src !== window.location.href) {
+                        bgAudio.play().catch(e => console.log("Autoplay blocked:", e));
+                    }
                 };
             } else {
                 document.getElementById('introOverlay').classList.add('hidden');
@@ -1873,6 +1928,16 @@
 
         function load(idx) {
             cur = idx;
+            bgAudio.pause();
+            if (scenes[idx].audioSrc) {
+                bgAudio.src = scenes[idx].audioSrc;
+                if (document.getElementById('introOverlay').classList.contains('hidden')) {
+                    bgAudio.play().catch(e => console.log("Autoplay blocked:", e));
+                }
+            } else {
+                bgAudio.src = '';
+            }
+
             if (!vis[cur]) vis[cur] = new Set();
 
             const s = scenes[idx];
@@ -1922,28 +1987,17 @@
 
             document.getElementById('overlay').innerHTML = ''; document.getElementById('transitContainer').classList.add('hidden'); closeP();
             s.hotspots.forEach((h, i) => {
-                const div = document.createElement('div'); div.className = 'hotspot'; div.id = 'h'+i; 
+                const div = document.createElement('div'); 
+                div.className = 'hotspot' + (h.isHidden ? ' hidden-hotspot' : ''); 
+                div.id = 'h'+i; 
+                div.innerHTML = h.isHidden ? '?' : 'i';
                 div.style.pointerEvents = 'auto';
-
-                const isFound = vis[cur].has(i);
-
-                if (h.isHiddenHotspot && !isFound) {
-                    div.classList.add('invisible-hotspot');
-                    div.innerHTML = '';
-                } else {
-                    div.innerHTML = 'i';
-                }
-
-                if(isFound) div.classList.add('visited');
+                if(vis[cur].has(i)) div.classList.add('visited');
 
                 div.onclick = (e) => {
                     e.stopPropagation();
-
-                    // Reveal it!
-                    div.classList.remove('invisible-hotspot');
-                    div.innerHTML = 'i';
                     div.classList.add('visited');
-
+                    div.innerHTML = 'i'; // Revert back to info icon when found
                     vis[cur].add(i);
                     updateHud();
                     showP(h, i);
@@ -1977,7 +2031,7 @@
         function showP(h, idx) {
             activeP = idx;
             document.getElementById('pTitle').textContent = h.title; document.getElementById('pDesc').textContent = h.desc;
-            const vid = document.getElementById('pVid'); const yt = h.videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=))([\w-]{11})/);
+            const vid = document.getElementById('pVid'); const yt = h.videoUrl.match(/(?:youtu\\.be\\/|youtube\\.com\\/(?:embed\\/|v\\/|watch\\?v=))([\\w-]{11})/);
             if(yt) { vid.src = 'https://www.youtube.com/embed/'+yt[1]; vid.classList.remove('hidden'); } else { vid.src = ''; vid.classList.add('hidden'); }
 
             const tBtn = document.getElementById('pTransitBtn');
@@ -2186,7 +2240,7 @@
         init();
     </${"script"}>
 </body>
-</html>`;
+</html>\`;
 
                 const blob = new Blob([exportHtml], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);
