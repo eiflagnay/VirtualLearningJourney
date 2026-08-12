@@ -111,7 +111,7 @@
                     </button>
                     <input type="file" id="importFile" class="hidden" accept=".html">
                     <button id="exportBtn" class="w-full md:w-auto justify-start bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-bold transition-colors text-sm flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                         Export App
                     </button>
                 </div>
@@ -616,13 +616,25 @@
 
         function initThree() {
             const container = document.getElementById('viewerContainer');
+            if (!container) return;
+
             scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 1, 1100);
+            camera = new THREE.PerspectiveCamera(75, (container.clientWidth || 800) / (container.clientHeight || 600), 1, 1100);
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setSize(container.clientWidth || 800, container.clientHeight || 600);
+
+            // Clear old canvas if re-initializing
+            const oldCanvas = container.querySelector('canvas');
+            if (oldCanvas) oldCanvas.remove();
 
             container.insertBefore(renderer.domElement, container.firstChild);
+
+            const geometry = new THREE.SphereGeometry(500, 60, 40);
+            geometry.scale(-1, 1, 1);
+            const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+            sphere = new THREE.Mesh(geometry, material);
+            scene.add(sphere);
 
             container.addEventListener('mousedown', onPointerStart);
             document.addEventListener('mousemove', onPointerMove);
@@ -771,6 +783,8 @@
         }
 
         function update() {
+            if (!sphere || !camera || !renderer) return;
+
             // Apply Momentum Physics
             if (isUserInteracting) {
                 lonVelocity = lon - prevLon;
@@ -803,7 +817,7 @@
 
         function updateHotspotMarkers() {
             const sceneObj = scenes.find(s => s.id === activeSceneId);
-            if (!sceneObj) return;
+            if (!sceneObj || !camera) return;
 
             sceneObj.hotspots.forEach((hs, idx) => {
                 const marker = document.getElementById(`marker-${idx}`);
@@ -901,7 +915,7 @@
                 btd.classList.add('bg-emerald-600', 'border-emerald-500', 'border-2');
                 btd.classList.remove('bg-slate-900/80');
                 
-                renderHotspots(); // This unhides the hidden points instantly
+                renderHotspots(); // Unhide hidden points
                 
                 document.getElementById('progressHud').classList.add('hidden');
                 document.getElementById('builderFinishJourneyBtn').classList.remove('hidden');
@@ -1098,7 +1112,11 @@
                 document.getElementById('uploadSection').classList.add('hidden');
                 document.getElementById('workspaceSection').classList.remove('hidden');
 
-                setTimeout(onWindowResize, 0);
+                setTimeout(onWindowResize, 50);
+
+                if (!scene || !sphere) {
+                    initThree();
+                }
 
                 const loader = new THREE.TextureLoader();
 
@@ -1109,8 +1127,10 @@
                 loader.load(
                     imgSrcToLoad,
                     (texture) => {
-                        sphere.material.map = texture;
-                        sphere.material.needsUpdate = true;
+                        if (sphere && sphere.material) {
+                            sphere.material.map = texture;
+                            sphere.material.needsUpdate = true;
+                        }
 
                         // Fade in smoothly ONLY AFTER the new texture is fully applied
                         const overlay = document.getElementById('transitionOverlay');
@@ -1121,7 +1141,7 @@
                     },
                     undefined,
                     (err) => {
-                        console.error("CORS Error:", err);
+                        console.error("CORS / Texture Error:", err);
                         if (imgSrcToLoad.startsWith('blob:')) {
                             setStatus("Error loading local preview.", "error");
                         } else {
@@ -1246,7 +1266,6 @@
                         const originalFov = camera.fov;
                         let zoomFrame;
 
-                        // Smooth hardware-accelerated ease-in zoom
                         const zoomStep = () => {
                             camera.fov -= (camera.fov - 20) * 0.1;
                             camera.updateProjectionMatrix();
@@ -1254,7 +1273,6 @@
                         };
                         zoomFrame = requestAnimationFrame(zoomStep);
 
-                        // Wait for black screen, then load the next scene
                         setTimeout(() => {
                             cancelAnimationFrame(zoomFrame);
                             camera.fov = originalFov; // reset camera for the new scene
@@ -1271,7 +1289,7 @@
 
             const p = document.getElementById('infoPopup');
             p.classList.remove('hidden');
-            updateHotspotMarkers(); // Instantly apply position
+            updateHotspotMarkers();
             setTimeout(() => { p.classList.remove('opacity-0'); p.classList.add('opacity-100'); }, 10);
         }
 
@@ -1279,7 +1297,7 @@
             activePopupIndex = null;
             const p = document.getElementById('infoPopup');
             p.classList.remove('opacity-100');
-            p.style.visibility = ''; // Reset visibility state
+            p.style.visibility = '';
             setTimeout(() => { p.classList.add('hidden'); document.getElementById('popupVideo').src = ''; }, 200);
         }
 
@@ -2158,7 +2176,7 @@
                 let secs = totalSecs % 60;
                 
                 if (tourTimer === 0) {
-                    document.getElementById('timeText').textContent = \`\${mins}:\${secs.toString().padStart(2, '0')}\`;
+                    document.getElementById('timeText').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
                 }
                 
                 let acc = totalClicks > 0 ? Math.round((totalH / totalClicks) * 100) : 100;
@@ -2194,8 +2212,8 @@
             let secs = totalSecs % 60;
             
             let timeString = tourTimer > 0 
-                ? \`You finished with \${document.getElementById('timeText').textContent} remaining!\`
-                : \`You completed the journey in \${mins}m \${secs}s!\`;
+                ? `You finished with ${document.getElementById('timeText').textContent} remaining!`
+                : `You completed the journey in ${mins}m ${secs}s!`;
                 
             document.getElementById('completionTimeText').textContent = timeString;
 
@@ -2235,7 +2253,7 @@
                     let totalSecs = Math.floor(remaining / 1000);
                     let mins = Math.floor(totalSecs / 60);
                     let secs = totalSecs % 60;
-                    document.getElementById('timeText').textContent = \`\${mins}:\${secs.toString().padStart(2, '0')}\`;
+                    document.getElementById('timeText').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
                 }, 1000);
             }
         }
@@ -2247,11 +2265,11 @@
             let unlockedHtml = '';
             scenes.forEach((s, i) => {
                 if(vis[i] && vis[i].size === s.hotspots.length) {
-                    unlockedHtml += \`<li>✅ \${s.title}</li>\`;
+                    unlockedHtml += `<li>✅ ${s.title}</li>`;
                 }
             });
             
-            document.getElementById('timeoutReport').innerHTML = unlockedHtml || \`<li>No scenes fully explored.</li>\`;
+            document.getElementById('timeoutReport').innerHTML = unlockedHtml || `<li>No scenes fully explored.</li>`;
             
             const to = document.getElementById('timeoutOverlay');
             to.classList.remove('hidden');
@@ -2700,7 +2718,7 @@
         init();
     </${"script"}>
 </body>
-</html>`;
+</html>\`;
 
                 const blob = new Blob([exportHtml], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);
