@@ -72,7 +72,7 @@
                 </button>
 
                 <!-- Responsive Toolbar -->
-                <div id="toolbarMenu" class="hidden md:flex absolute top-16 right-4 bg-white shadow-2xl border border-slate-200 rounded-xl p-4 flex-col gap-2 z-50 w-56 md:static md:flex-row md:shadow-none md:border-none md:p-0 md:bg-transparent md:w-auto">
+                <div id="toolbarMenu" class="hidden md:flex absolute top-16 right-4 bg-white shadow-2xl border border-slate-200 rounded-xl p-4 flex-col gap-2 z-50 w-56 md:static md:flex-row md:shadow-none md:border-none md:p-0 md:bg-transparent md:w-auto overflow-y-auto max-h-[80vh] md:max-h-none">
                     <button id="aboutBtn" class="w-full md:w-auto justify-start text-slate-500 hover:bg-slate-50 md:hover:bg-transparent hover:text-indigo-600 transition-colors focus:outline-none p-2 md:p-0 rounded-md flex items-center gap-2 md:mr-2" title="About">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 md:w-6 md:h-6 flex-shrink-0"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                         <span class="md:hidden font-medium text-sm">About Builder</span>
@@ -80,6 +80,10 @@
                     <button id="toggleModeBtn" class="w-full md:w-auto justify-start bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                         Preview Mode
+                    </button>
+                    <button id="setupTourBtn" class="w-full md:w-auto justify-start bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        Tour Settings
                     </button>
                     <button id="setupIntroBtn" class="w-full md:w-auto justify-start bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
@@ -162,12 +166,21 @@
                     <button id="zoomOutBtn" class="w-10 h-10 bg-slate-800/80 text-white rounded-full flex items-center justify-center hover:bg-slate-700 backdrop-blur shadow-lg border border-slate-600 text-xl font-bold transition-transform hover:scale-110 active:scale-95">-</button>
                 </div>
 
+                <!-- Timer Display -->
+                <div id="builderTimerDisplay" class="absolute top-6 right-6 bg-slate-900/80 text-white px-5 py-2 rounded-full font-bold text-sm backdrop-blur shadow-lg z-40 transition-all duration-300 hidden">
+                    ⏱️ <span id="builderTimeText">00:00</span>
+                </div>
+
                 <div id="progressHud" class="absolute top-6 left-1/2 -translate-x-1/2 bg-slate-900/80 text-white px-5 py-2 rounded-full font-bold text-sm backdrop-blur shadow-lg z-40 transition-all duration-300 hidden flex items-center gap-2 border border-slate-700 pointer-events-none">
                     <span>🔍 Discovered:</span>
                     <span id="progressCount" class="text-indigo-300">0</span>
                     <span class="text-slate-500">/</span>
                     <span id="progressTotal">0</span>
                 </div>
+
+                <button id="builderFinishJourneyBtn" class="absolute top-6 left-1/2 -translate-x-1/2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-full font-bold shadow-[0_0_15px_rgba(245,158,11,0.6)] z-40 transition-all duration-300 hidden animate-bounce border-2 border-amber-300">
+                    🎉 Finish Journey
+                </button>
 
                 <div id="transitionOverlay" class="absolute inset-0 bg-slate-950 z-[100] opacity-0 pointer-events-none transition-opacity duration-500"></div>
 
@@ -256,6 +269,28 @@
         </div>
     </div>
 
+    <!-- Tour Settings Modal -->
+    <div id="tourSettingsModal" class="fixed inset-0 bg-slate-900 bg-opacity-75 hidden z-[60] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full">
+            <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                Tour Settings
+            </h3>
+            <p class="text-sm text-slate-600 mb-4">Configure global rules for your tour.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Time Limit (Minutes)</label>
+                    <input type="number" id="tourTimerInput" min="0" class="w-full border border-slate-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="0 for no timer">
+                    <p class="text-xs text-slate-400 mt-1">Leave as 0 to disable the countdown timer. (Duration is still tracked silently).</p>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
+                <button id="closeSettingsBtn" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-md font-medium transition-colors">Cancel</button>
+                <button id="saveSettingsBtn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium transition-colors">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Intro Setup Modal -->
     <div id="builderIntroModal" class="fixed inset-0 bg-slate-900 bg-opacity-75 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full">
@@ -326,6 +361,35 @@
         </div>
     </div>
 
+    <!-- Builder Timeout Overlay -->
+    <div id="builderTimeoutOverlay" class="fixed inset-0 bg-red-900/95 hidden z-[600] flex items-center justify-center p-4 transition-opacity duration-500 opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-t-4 border-red-500">
+            <div class="bg-red-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">⏳</div>
+            <h2 class="text-3xl font-bold text-slate-800 mb-3">Time's Up!</h2>
+            <p class="text-slate-600 mb-6 leading-relaxed">The preview timer has run out. Here is the exploration report:</p>
+            <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-200 text-left">
+                <p class="font-bold mb-2 text-slate-700 text-sm uppercase tracking-wider">Fully Explored Scenes</p>
+                <ul id="builderTimeoutReport" class="text-sm text-slate-600 space-y-1"></ul>
+            </div>
+            <button id="builderTimeoutCloseBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg w-full">Back to Edit Mode</button>
+        </div>
+    </div>
+
+    <!-- Builder Completion Overlay -->
+    <div id="builderCompleteOverlay" class="fixed inset-0 bg-emerald-900/95 hidden z-[600] flex items-center justify-center p-4 transition-opacity duration-500 opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-t-4 border-emerald-500">
+            <div class="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">🏆</div>
+            <h2 class="text-3xl font-bold text-slate-800 mb-3">Journey Complete!</h2>
+            <p id="builderCompletionTimeText" class="text-slate-600 mb-8 font-medium text-lg"></p>
+            <div class="bg-amber-50 rounded-xl p-4 mb-6 border border-amber-200 text-amber-800">
+                <p class="font-bold mb-1">🗺️ Fast Travel Unlocked!</p>
+                <p class="text-sm">You can now use the Map to instantly travel to any location, including secret hidden scenes.</p>
+            </div>
+            <button onclick="document.getElementById('builderCompleteOverlay').classList.add('hidden'); openBuilderMap();" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg w-full mb-3">Open Map</button>
+            <button id="builderCompleteToEditBtn" class="text-slate-500 hover:text-slate-800 font-bold py-2 w-full">Back to Edit Mode</button>
+        </div>
+    </div>
+
     <!-- Diagnostic Visual Map Modal (Builder) -->
     <div id="mapModal" class="fixed inset-0 bg-slate-900/95 hidden z-[500] flex flex-col p-6 transition-opacity duration-300 opacity-0">
         <div class="flex justify-between items-center mb-6">
@@ -392,6 +456,7 @@
                         <li>Interactive hotspots with text, video, portals, and hidden clues</li>
                         <li>Linear quiz checkpoints (Transit Logic)</li>
                         <li>Looping background audio per scene</li>
+                        <li>Global Timers & Duration Tracking</li>
                         <li>✨ Gamified Fast Travel Map and Hidden Bonus Scenes</li>
                         <li>✨ Gemini AI integration for auto-filling content</li>
                         <li>1-Click Export to a standalone HTML file</li>
@@ -435,8 +500,14 @@
         let scenes = [];
         let activeSceneId = null;
         let isEditMode = true;
+        let tourTimer = 0; // minutes
+        let builderStartTime = 0;
+        let builderTimerInterval = null;
+        let builderTourCompleted = false;
+        
         let currentBgAudio = new Audio();
         currentBgAudio.loop = true;
+        
         let pendingHotspotPos = null;
         let currentEditingIndex = null;
         let activePopupIndex = null;
@@ -588,12 +659,12 @@
         }
 
         function anyModalOpen() {
-            const modals = ['hotspotModal', 'builderTransitModal', 'builderQuizModal', 'builderIntroModal', 'customPromptModal', 'customConfirmModal', 'aboutModal', 'mapModal'];
+            const modals = ['hotspotModal', 'builderTransitModal', 'builderQuizModal', 'builderIntroModal', 'tourSettingsModal', 'customPromptModal', 'customConfirmModal', 'aboutModal', 'mapModal', 'builderTimeoutOverlay', 'builderCompleteOverlay'];
             return modals.some(id => !document.getElementById(id).classList.contains('hidden'));
         }
 
         function onPointerStart(event) {
-            if (event.target.closest('#floatingMenu') || event.target.closest('.hotspot-marker') || event.target.closest('#zoomControls') || anyModalOpen()) return;
+            if (event.target.closest('#floatingMenu') || event.target.closest('.hotspot-marker') || event.target.closest('#zoomControls') || event.target.closest('#builderFinishJourneyBtn') || anyModalOpen()) return;
 
             const ptr = getPointer(event);
             isUserInteracting = true;
@@ -769,12 +840,127 @@
                 }
             }
         }
+        
+        // --- Builder Preview Completion & Timer Logic ---
+        function checkBuilderCompletion() {
+            if (builderTourCompleted || scenes.length === 0) return;
+
+            const connected = new Set();
+            const stack = [scenes[0].id];
+
+            while (stack.length > 0) {
+                const currId = stack.pop();
+                if (connected.has(currId)) continue;
+                connected.add(currId);
+
+                const currSceneIdx = scenes.findIndex(s => s.id === currId);
+                const s = scenes[currSceneIdx];
+                if (!s) continue;
+
+                // Simple flow assumes unlocking next scene if no config, or if unlocked via quiz
+                if (unlockedScenesInBuilder.has(currId) || (!s.transitConfig && s.hotspots.length === 0)) {
+                    const nextScene = scenes[currSceneIdx + 1];
+                    if (nextScene && !nextScene.isHidden && !connected.has(nextScene.id)) stack.push(nextScene.id);
+                }
+
+                s.hotspots.forEach(h => {
+                    if (h.targetSceneId && !connected.has(h.targetSceneId)) stack.push(h.targetSceneId);
+                });
+            }
+
+            let totalH = 0, totalV = 0;
+            connected.forEach(id => {
+                const s = scenes.find(sc => sc.id === id);
+                if (s) {
+                    totalH += s.hotspots.length;
+                    if (visitedHotspots[id]) totalV += visitedHotspots[id].size;
+                }
+            });
+
+            if (totalH > 0 && totalH === totalV) {
+                builderTourCompleted = true;
+                if(builderTimerInterval) clearInterval(builderTimerInterval);
+                
+                document.getElementById('progressHud').classList.add('hidden');
+                document.getElementById('builderFinishJourneyBtn').classList.remove('hidden');
+            }
+        }
+        
+        document.getElementById('builderFinishJourneyBtn').onclick = () => {
+            document.getElementById('builderFinishJourneyBtn').classList.add('hidden');
+            
+            let elapsed = Date.now() - builderStartTime;
+            let totalSecs = Math.floor(elapsed / 1000);
+            let mins = Math.floor(totalSecs / 60);
+            let secs = totalSecs % 60;
+            
+            let timeString = tourTimer > 0 
+                ? `You finished with ${document.getElementById('builderTimeText').textContent} remaining!`
+                : `You completed the journey in ${mins}m ${secs}s!`;
+                
+            document.getElementById('builderCompletionTimeText').textContent = timeString;
+
+            const over = document.getElementById('builderCompleteOverlay');
+            over.classList.remove('hidden');
+            setTimeout(() => over.classList.remove('opacity-0'), 50);
+        };
+        
+        document.getElementById('builderCompleteToEditBtn').onclick = () => {
+            document.getElementById('builderCompleteOverlay').classList.add('hidden');
+            document.getElementById('toggleModeBtn').click(); // Switch back to edit
+        };
+
+        function startBuilderTimer() {
+            builderStartTime = Date.now();
+            if (tourTimer > 0) {
+                document.getElementById('builderTimerDisplay').classList.remove('hidden');
+                builderTimerInterval = setInterval(() => {
+                    let elapsed = Date.now() - builderStartTime;
+                    let remaining = (tourTimer * 60000) - elapsed;
+                    if (remaining <= 0) {
+                        clearInterval(builderTimerInterval);
+                        remaining = 0;
+                        handleBuilderTimeUp();
+                    }
+                    
+                    let totalSecs = Math.floor(remaining / 1000);
+                    let mins = Math.floor(totalSecs / 60);
+                    let secs = totalSecs % 60;
+                    document.getElementById('builderTimeText').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+                }, 1000);
+            }
+        }
+
+        function handleBuilderTimeUp() {
+            document.getElementById('transitionOverlay').classList.remove('opacity-0', 'pointer-events-none');
+            document.getElementById('transitionOverlay').classList.add('opacity-100', 'pointer-events-auto');
+            
+            let unlockedHtml = '';
+            scenes.forEach(s => {
+                if(visitedHotspots[s.id] && visitedHotspots[s.id].size === s.hotspots.length) {
+                    unlockedHtml += `<li>✅ ${s.title}</li>`;
+                }
+            });
+            
+            document.getElementById('builderTimeoutReport').innerHTML = unlockedHtml || `<li>No scenes fully explored.</li>`;
+            
+            const to = document.getElementById('builderTimeoutOverlay');
+            to.classList.remove('hidden');
+            setTimeout(() => to.classList.remove('opacity-0'), 50);
+        }
+        
+        document.getElementById('builderTimeoutCloseBtn').onclick = () => {
+            document.getElementById('builderTimeoutOverlay').classList.add('hidden');
+            document.getElementById('transitionOverlay').classList.add('opacity-0', 'pointer-events-none');
+            document.getElementById('transitionOverlay').classList.remove('opacity-100', 'pointer-events-auto');
+            document.getElementById('toggleModeBtn').click(); // Switch back to edit mode
+        };
 
         function updateProgressHud() {
             const hud = document.getElementById('progressHud');
             const s = scenes.find(sc => sc.id === activeSceneId);
 
-            if (isEditMode || !s || s.hotspots.length === 0) {
+            if (isEditMode || builderTourCompleted || !s || s.hotspots.length === 0) {
                 hud.classList.add('hidden');
                 return;
             }
@@ -977,6 +1163,7 @@
                         if (s.transitConfig && visitedHotspots[activeSceneId].size === s.hotspots.length && !unlockedScenesInBuilder.has(activeSceneId)) {
                             document.getElementById('builderTransitBtnContainer').classList.remove('hidden');
                         }
+                        checkBuilderCompletion();
                         openPopup(hs, idx);
                     } else {
                         currentEditingIndex = idx;
@@ -1290,6 +1477,7 @@
                 try {
                     const scenesMatch = content.match(/const scenes = (\[.*\]);/);
                     const introMatch = content.match(/const tourIntro = (\{.*\});/);
+                    const timerMatch = content.match(/const tourTimer = (\d+);/);
 
                     if (scenesMatch && scenesMatch[1]) {
                         scenes = JSON.parse(scenesMatch[1]);
@@ -1298,6 +1486,12 @@
                             tourIntro = JSON.parse(introMatch[1]);
                         } else {
                             tourIntro = { title: "Welcome to the Journey", desc: "Explore the environment and click on the information points to learn more!" };
+                        }
+                        
+                        if (timerMatch && timerMatch[1]) {
+                            tourTimer = parseInt(timerMatch[1], 10);
+                        } else {
+                            tourTimer = 0;
                         }
 
                         // Reset editor state
@@ -1430,16 +1624,45 @@
             isEditMode = !isEditMode;
 
             if (!isEditMode) {
+                // Entering Preview
                 unlockedScenesInBuilder.clear();
+                builderTourCompleted = false;
+                startBuilderTimer();
+                
+                document.getElementById('toggleModeBtn').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Edit Mode';
+                setStatus("Preview Mode: Testing interactions, timers, and transitions.");
+            } else {
+                // Entering Edit
+                if(builderTimerInterval) clearInterval(builderTimerInterval);
+                document.getElementById('builderTimerDisplay').classList.add('hidden');
+                document.getElementById('builderFinishJourneyBtn').classList.add('hidden');
+                document.getElementById('builderTimeoutOverlay').classList.add('hidden');
+                document.getElementById('builderCompleteOverlay').classList.add('hidden');
+                
+                document.getElementById('toggleModeBtn').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Preview Mode';
+                setStatus("Edit Mode: Click in the viewer to add info points.");
             }
 
-            document.getElementById('toggleModeBtn').innerHTML = isEditMode ?
-                '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Preview Mode' :
-                '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Edit Mode';
             document.body.classList.toggle('edit-mode', isEditMode);
-            setStatus(isEditMode ? "Edit Mode: Click in the viewer to add info points." : "Preview Mode: Testing interactions and transitions.");
             switchScene(activeSceneId);
             updateProgressHud();
+        };
+
+        // --- Setup Tour Settings (Timer) ---
+        document.getElementById('setupTourBtn').onclick = () => {
+            document.getElementById('tourTimerInput').value = tourTimer || '';
+            document.getElementById('tourSettingsModal').classList.remove('hidden');
+        };
+
+        document.getElementById('saveSettingsBtn').onclick = () => {
+            const val = parseInt(document.getElementById('tourTimerInput').value, 10);
+            tourTimer = isNaN(val) || val < 0 ? 0 : val;
+            document.getElementById('tourSettingsModal').classList.add('hidden');
+            setStatus(`Tour settings saved. ${tourTimer > 0 ? 'Timer set to ' + tourTimer + ' mins.' : 'Timer disabled.'}`, "success");
+        };
+
+        document.getElementById('closeSettingsBtn').onclick = () => {
+            document.getElementById('tourSettingsModal').classList.add('hidden');
         };
 
         // --- Setup Intro Controls ---
@@ -1509,6 +1732,7 @@
                 document.getElementById('builderTransitBtnContainer').classList.add('hidden');
 
                 setStatus("Success! Scene unlocked.", "success");
+                checkBuilderCompletion();
             } else {
                 document.getElementById('builderQuizError').classList.remove('hidden');
             }
@@ -1653,12 +1877,21 @@
         <button id="zOut" style="width: 40px; height: 40px; border-radius: 50%; background: rgba(30,41,59,0.8); color: white; border: 1px solid #475569; font-size: 20px; font-weight: bold; cursor: pointer; backdrop-filter: blur(4px); transition: transform 0.1s;">-</button>
     </div>
 
+    <!-- Timer Display -->
+    <div id="timerDisplay" class="absolute top-6 right-6 bg-slate-900/80 text-white px-5 py-2 rounded-full font-bold text-sm backdrop-blur shadow-lg z-40 transition-all duration-300 hidden">
+        ⏱️ <span id="timeText">00:00</span>
+    </div>
+
     <div id="progressHud" class="absolute top-6 left-1/2 -translate-x-1/2 bg-slate-900/80 text-white px-5 py-2 rounded-full font-bold text-sm backdrop-blur shadow-lg z-40 transition-all duration-300 hidden flex items-center gap-2 border border-slate-700 pointer-events-none">
         <span>🔍 Discovered:</span>
         <span id="pCount" class="text-indigo-300">0</span>
         <span class="text-slate-500">/</span>
         <span id="pTotal">0</span>
     </div>
+
+    <button id="finishJourneyBtn" class="absolute top-6 left-1/2 -translate-x-1/2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-full font-bold shadow-[0_0_15px_rgba(245,158,11,0.6)] z-40 transition-all duration-300 hidden animate-bounce border-2 border-amber-300">
+        🎉 Finish Journey
+    </button>
 
     <div id="loadingOverlay" class="fixed inset-0 bg-slate-950 z-[99999] flex flex-col items-center justify-center transition-all duration-500">
         <div id="loadingContent" class="text-center">
@@ -1702,12 +1935,26 @@
         </div>
     </div>
 
+    <!-- Timeout Overlay -->
+    <div id="timeoutOverlay" class="fixed inset-0 bg-red-900/95 hidden z-[600] flex items-center justify-center p-4 transition-opacity duration-500 opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-t-4 border-red-500">
+            <div class="bg-red-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">⏳</div>
+            <h2 class="text-3xl font-bold text-slate-800 mb-3">Time's Up!</h2>
+            <p class="text-slate-600 mb-6 leading-relaxed">The timer has run out. Here is your exploration report:</p>
+            <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-200 text-left">
+                <p class="font-bold mb-2 text-slate-700 text-sm uppercase tracking-wider">Fully Explored Scenes</p>
+                <ul id="timeoutReport" class="text-sm text-slate-600 space-y-1"></ul>
+            </div>
+            <button onclick="location.reload()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg w-full">Restart Journey</button>
+        </div>
+    </div>
+
     <!-- Journey Complete Overlay -->
     <div id="completeOverlay" class="fixed inset-0 bg-emerald-900/95 hidden z-[600] flex items-center justify-center p-4 transition-opacity duration-500 opacity-0">
         <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-t-4 border-emerald-500">
             <div class="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">🏆</div>
             <h2 class="text-3xl font-bold text-slate-800 mb-3">Journey Complete!</h2>
-            <p class="text-slate-600 mb-8 leading-relaxed">You have discovered all information points and completed every challenge.</p>
+            <p id="completionTimeText" class="text-slate-600 mb-8 font-medium text-lg"></p>
             <div class="bg-amber-50 rounded-xl p-4 mb-6 border border-amber-200 text-amber-800">
                 <p class="font-bold mb-1">🗺️ Fast Travel Unlocked!</p>
                 <p class="text-sm">You can now use the Map to instantly travel to any location, including secret hidden scenes.</p>
@@ -1801,8 +2048,10 @@
     </div>
 
     <${"script"}>
-        const scenes = ${JSON.stringify(exportScenes)};
-        const tourIntro = ${JSON.stringify(tourIntro)};
+        const scenes = \${JSON.stringify(exportScenes)};
+        const tourIntro = \${JSON.stringify(tourIntro)};
+        const tourTimer = \${tourTimer};
+        
         let cur = 0, max = 0, lon = 0, lat = 0;
         let scene, camera, renderer, sphere;
         let vis = {};
@@ -1811,6 +2060,9 @@
         let bgAudio = new Audio();
         bgAudio.loop = true;
         let initPinchDist = null, initFov = null;
+        
+        let startTime = 0;
+        let timerInterval = null;
 
         let isD = false, mx, my, mL, mLat;
         let momentum = true, lonVel = 0, latVel = 0, prevLon = 0, prevLat = 0;
@@ -1863,26 +2115,84 @@
 
             if (totalH > 0 && totalH === totalV) {
                 tourCompleted = true;
-
-                const btn = document.getElementById('openMapMenuBtn');
-                if (btn) {
-                    btn.innerHTML = '🗺️ Fast Travel Map';
-                    btn.className = 'w-full text-left p-2 rounded bg-amber-100 font-bold text-amber-800 hover:bg-amber-200 mt-2 transition-colors';
-                    btn.onclick = () => {
-                        const pnl = document.getElementById('menuPanel');
-                        if(pnl) pnl.classList.add('hidden');
-                        openMap();
-                    };
-                }
-
-                renderMenu();
-
-                const over = document.getElementById('completeOverlay');
-                if (over) {
-                    over.classList.remove('hidden');
-                    setTimeout(() => over.classList.remove('opacity-0'), 50);
-                }
+                if(timerInterval) clearInterval(timerInterval);
+                
+                document.getElementById('progressHud').classList.add('hidden');
+                document.getElementById('finishJourneyBtn').classList.remove('hidden');
             }
+        }
+        
+        document.getElementById('finishJourneyBtn').onclick = () => {
+            document.getElementById('finishJourneyBtn').classList.add('hidden');
+            
+            let elapsed = Date.now() - startTime;
+            let totalSecs = Math.floor(elapsed / 1000);
+            let mins = Math.floor(totalSecs / 60);
+            let secs = totalSecs % 60;
+            
+            let timeString = tourTimer > 0 
+                ? \`You finished with \${document.getElementById('timeText').textContent} remaining!\`
+                : \`You completed the journey in \${mins}m \${secs}s!\`;
+                
+            document.getElementById('completionTimeText').textContent = timeString;
+
+            const btn = document.getElementById('openMapMenuBtn');
+            if (btn) {
+                btn.innerHTML = '🗺️ Fast Travel Map';
+                btn.className = 'w-full text-left p-2 rounded bg-amber-100 font-bold text-amber-800 hover:bg-amber-200 mt-2 transition-colors';
+                btn.onclick = () => {
+                    const pnl = document.getElementById('menuPanel');
+                    if(pnl) pnl.classList.add('hidden');
+                    openMap();
+                };
+            }
+
+            renderMenu();
+
+            const over = document.getElementById('completeOverlay');
+            if (over) {
+                over.classList.remove('hidden');
+                setTimeout(() => over.classList.remove('opacity-0'), 50);
+            }
+        };
+
+        function startTimer() {
+            startTime = Date.now();
+            if (tourTimer > 0) {
+                document.getElementById('timerDisplay').classList.remove('hidden');
+                timerInterval = setInterval(() => {
+                    let elapsed = Date.now() - startTime;
+                    let remaining = (tourTimer * 60000) - elapsed;
+                    if (remaining <= 0) {
+                        clearInterval(timerInterval);
+                        remaining = 0;
+                        handleTimeUp();
+                    }
+                    
+                    let totalSecs = Math.floor(remaining / 1000);
+                    let mins = Math.floor(totalSecs / 60);
+                    let secs = totalSecs % 60;
+                    document.getElementById('timeText').textContent = \`\${mins}:\${secs.toString().padStart(2, '0')}\`;
+                }, 1000);
+            }
+        }
+
+        function handleTimeUp() {
+            document.getElementById('fadeOverlay').classList.remove('opacity-0', 'pointer-events-none');
+            document.getElementById('fadeOverlay').classList.add('opacity-100', 'pointer-events-auto');
+            
+            let unlockedHtml = '';
+            scenes.forEach((s, i) => {
+                if(vis[i] && vis[i].size === s.hotspots.length) {
+                    unlockedHtml += \`<li>✅ \${s.title}</li>\`;
+                }
+            });
+            
+            document.getElementById('timeoutReport').innerHTML = unlockedHtml || \`<li>No scenes fully explored.</li>\`;
+            
+            const to = document.getElementById('timeoutOverlay');
+            to.classList.remove('hidden');
+            setTimeout(() => to.classList.remove('opacity-0'), 50);
         }
 
         function showUnlockToast() {
@@ -1896,7 +2206,7 @@
         function updateHud() {
             const h = document.getElementById('progressHud');
             const s = scenes[cur];
-            if (!s || !s.hotspots || s.hotspots.length === 0) { h.classList.add('hidden'); return; }
+            if (tourCompleted || !s || !s.hotspots || s.hotspots.length === 0) { h.classList.add('hidden'); return; }
             h.classList.remove('hidden', 'hud-complete', 'bg-emerald-600', 'border-emerald-500');
             h.classList.add('bg-slate-900/80', 'border-slate-700');
 
@@ -1978,12 +2288,16 @@
                     const overlay = document.getElementById('introOverlay');
                     overlay.classList.add('opacity-0');
                     setTimeout(() => overlay.classList.add('hidden'), 500);
+                    
+                    startTimer();
+                    
                     if (bgAudio.src && bgAudio.src !== window.location.href) {
                         bgAudio.play().catch(e => console.log("Autoplay blocked:", e));
                     }
                 };
             } else {
                 document.getElementById('introOverlay').classList.add('hidden');
+                startTimer();
             }
 
             load(0); animate();
@@ -2055,12 +2369,15 @@
                 div.id = 'h'+i; 
                 div.innerHTML = h.isHidden ? '?' : 'i';
                 div.style.pointerEvents = 'auto';
-                if(vis[cur].has(i)) div.classList.add('visited');
+                if(vis[cur].has(i)) {
+                    div.classList.add('visited');
+                    div.innerHTML = 'i';
+                }
 
                 div.onclick = (e) => {
                     e.stopPropagation();
                     div.classList.add('visited');
-                    div.innerHTML = 'i'; // Revert back to info icon when found
+                    div.innerHTML = 'i'; 
                     vis[cur].add(i);
                     updateHud();
                     showP(h, i);
@@ -2303,7 +2620,7 @@
         init();
     </${"script"}>
 </body>
-</html>`;
+</html>\`;
 
                 const blob = new Blob([exportHtml], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);
