@@ -949,8 +949,8 @@
             let secs = totalSecs % 60;
             
             let timeString = tourTimer > 0 
-                ? `You finished with ${document.getElementById('builderTimeText').textContent} remaining!`
-                : `You completed the journey in ${mins}m ${secs}s!`;
+                ? 'You finished with ' + document.getElementById('builderTimeText').textContent + ' remaining!'
+                : 'You completed the journey in ' + mins + 'm ' + secs + 's!';
                 
             document.getElementById('builderCompletionTimeText').textContent = timeString;
 
@@ -992,11 +992,11 @@
             let unlockedHtml = '';
             scenes.forEach(s => {
                 if(visitedHotspots[s.id] && visitedHotspots[s.id].size === s.hotspots.length) {
-                    unlockedHtml += `<li>✅ ${s.title}</li>`;
+                    unlockedHtml += '<li>✅ ' + s.title + '</li>';
                 }
             });
             
-            document.getElementById('builderTimeoutReport').innerHTML = unlockedHtml || `<li>No scenes fully explored.</li>`;
+            document.getElementById('builderTimeoutReport').innerHTML = unlockedHtml || '<li>No scenes fully explored.</li>';
             
             const to = document.getElementById('builderTimeoutOverlay');
             to.classList.remove('hidden');
@@ -1320,6 +1320,7 @@
                         const originalFov = camera.fov;
                         let zoomFrame;
 
+                        // Smooth hardware-accelerated ease-in zoom
                         const zoomStep = () => {
                             camera.fov -= (camera.fov - 20) * 0.1;
                             camera.updateProjectionMatrix();
@@ -1327,8 +1328,9 @@
                         };
                         zoomFrame = requestAnimationFrame(zoomStep);
 
+                        // Wait for black screen, then load the next scene
                         setTimeout(() => {
-                            cancelAnimationFrame(zFrame);
+                            cancelAnimationFrame(zoomFrame);
                             camera.fov = originalFov; // reset camera for the new scene
                             camera.updateProjectionMatrix();
                             switchScene(hs.targetSceneId);
@@ -2241,7 +2243,7 @@
                 let secs = totalSecs % 60;
                 
                 if (tourTimer === 0) {
-                    document.getElementById('timeText').textContent = \`\${mins}:\${secs.toString().padStart(2, '0')}\`;
+                    document.getElementById('timeText').textContent = mins + ":" + secs.toString().padStart(2, '0');
                 }
                 
                 let acc = totalClicks > 0 ? Math.round((totalH / totalClicks) * 100) : 100;
@@ -2279,8 +2281,8 @@
             let secs = totalSecs % 60;
             
             let timeString = tourTimer > 0 
-                ? \`You finished with \${document.getElementById('timeText').textContent} remaining!\`
-                : \`You completed the journey in \${mins}m \${secs}s!\`;
+                ? "You finished with " + document.getElementById('timeText').textContent + " remaining!"
+                : "You completed the journey in " + mins + "m " + secs + "s!";
                 
             document.getElementById('completionTimeText').textContent = timeString;
 
@@ -2320,7 +2322,7 @@
                     let totalSecs = Math.floor(remaining / 1000);
                     let mins = Math.floor(totalSecs / 60);
                     let secs = totalSecs % 60;
-                    document.getElementById('timeText').textContent = \`\${mins}:\${secs.toString().padStart(2, '0')}\`;
+                    document.getElementById('timeText').textContent = mins + ":" + secs.toString().padStart(2, '0');
                 }, 1000);
             }
         }
@@ -2332,11 +2334,11 @@
             let unlockedHtml = '';
             scenes.forEach((s, i) => {
                 if(vis[i] && vis[i].size === s.hotspots.length) {
-                    unlockedHtml += \`<li>✅ \${s.title}</li>\`;
+                    unlockedHtml += "<li>✅ " + s.title + "</li>";
                 }
             });
             
-            document.getElementById('timeoutReport').innerHTML = unlockedHtml || \`<li>No scenes fully explored.</li>\`;
+            document.getElementById('timeoutReport').innerHTML = unlockedHtml || "<li>No scenes fully explored.</li>";
             
             const to = document.getElementById('timeoutOverlay');
             to.classList.remove('hidden');
@@ -2796,7 +2798,7 @@
         init();
     </${"script"}>
 </body>
-</html>\`;
+</html>`;
 
                 const blob = new Blob([exportHtml], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);
