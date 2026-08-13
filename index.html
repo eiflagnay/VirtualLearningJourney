@@ -16,8 +16,8 @@
 
         @keyframes pulse-blue { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
         @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
-        .hotspot-marker { animation: pulse-blue 2s infinite; transition: transform 0.2s, background-color 0.2s, opacity 0.2s; pointer-events: auto; }
-        .hotspot-marker:hover { transform: scale(1.1); }
+        .hotspot-marker { animation: pulse-blue 2s infinite; transition: transform 0.2s, background-color 0.2s, opacity 0.2s, width 0.3s, height 0.3s; pointer-events: auto; }
+        .hotspot-marker:hover { transform: scale(1.05); }
         .visited { background-color: #10b981 !important; border-color: white !important; color: white !important; opacity: 1 !important; animation: none; }
         .hud-complete { background-color: #10b981 !important; border-color: #059669 !important; animation: pulse-green 2s infinite; }
 
@@ -252,13 +252,27 @@
                     </select>
                     <p class="text-xs text-slate-400 mt-1">Make this hotspot a portal that directly jumps to another scene.</p>
                 </div>
-                <div class="pt-3 mt-2 border-t border-slate-100 flex items-center justify-between">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Hidden Point</label>
-                        <p class="text-xs text-slate-400">Marker is invisible until the user finds and clicks it.</p>
+                
+                <!-- NEW: Hidden Size Multiplier Controls -->
+                <div class="pt-3 mt-2 border-t border-slate-100">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Hidden Point</label>
+                            <p class="text-xs text-slate-400">Marker is invisible until the user finds and clicks it.</p>
+                        </div>
+                        <input type="checkbox" id="hsIsHidden" class="w-5 h-5 accent-indigo-600 cursor-pointer">
                     </div>
-                    <input type="checkbox" id="hsIsHidden" class="w-5 h-5 accent-indigo-600 cursor-pointer">
+                    
+                    <div id="hiddenSizeContainer" class="mt-3 hidden bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex justify-between">
+                            <span>Hitbox Size</span>
+                            <span class="text-indigo-600"><span id="hsHiddenSizeVal">3</span>x</span>
+                        </label>
+                        <input type="range" id="hsHiddenSize" min="1" max="10" step="1" value="3" class="w-full accent-indigo-600 cursor-pointer mt-1">
+                        <p class="text-xs text-slate-400 mt-1">Make the invisible area larger so it's easier to tap.</p>
+                    </div>
                 </div>
+
             </div>
             <div class="flex justify-between items-center mt-6 pt-2">
                 <button id="deleteModalHsBtn" class="text-red-600 hover:bg-red-50 px-3 py-1.5 rounded text-sm font-medium transition-colors hidden">Delete</button>
@@ -752,6 +766,9 @@
                 document.getElementById('hsDesc').value = '';
                 document.getElementById('hsVideo').value = '';
                 document.getElementById('hsIsHidden').checked = false;
+                document.getElementById('hiddenSizeContainer').style.display = 'none';
+                document.getElementById('hsHiddenSize').value = 3;
+                document.getElementById('hsHiddenSizeVal').textContent = '3';
 
                 const select = document.getElementById('hsTargetScene');
                 select.innerHTML = '<option value="">None (Standard Point)</option>';
@@ -932,8 +949,8 @@
             let secs = totalSecs % 60;
             
             let timeString = tourTimer > 0 
-                ? "You finished with " + document.getElementById('builderTimeText').textContent + " remaining!"
-                : "You completed the journey in " + mins + "m " + secs + "s!";
+                ? `You finished with ${document.getElementById('builderTimeText').textContent} remaining!`
+                : `You completed the journey in ${mins}m ${secs}s!`;
                 
             document.getElementById('builderCompletionTimeText').textContent = timeString;
 
@@ -963,7 +980,7 @@
                     let totalSecs = Math.floor(remaining / 1000);
                     let mins = Math.floor(totalSecs / 60);
                     let secs = totalSecs % 60;
-                    document.getElementById('builderTimeText').textContent = mins + ":" + secs.toString().padStart(2, '0');
+                    document.getElementById('builderTimeText').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
                 }, 1000);
             }
         }
@@ -975,11 +992,11 @@
             let unlockedHtml = '';
             scenes.forEach(s => {
                 if(visitedHotspots[s.id] && visitedHotspots[s.id].size === s.hotspots.length) {
-                    unlockedHtml += "<li>✅ " + s.title + "</li>";
+                    unlockedHtml += `<li>✅ ${s.title}</li>`;
                 }
             });
             
-            document.getElementById('builderTimeoutReport').innerHTML = unlockedHtml || "<li>No scenes fully explored.</li>";
+            document.getElementById('builderTimeoutReport').innerHTML = unlockedHtml || `<li>No scenes fully explored.</li>`;
             
             const to = document.getElementById('builderTimeoutOverlay');
             to.classList.remove('hidden');
@@ -1042,6 +1059,21 @@
                 const actionsDiv = document.createElement('div');
                 actionsDiv.className = 'flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity';
 
+                const renameBtn = document.createElement('button');
+                renameBtn.className = 'text-blue-500 hover:text-blue-700 p-1 mr-1';
+                renameBtn.title = "Rename Scene";
+                renameBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>';
+                renameBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    customPrompt(`Rename Scene:`, s.title, (newName) => {
+                        if (newName && newName.trim()) {
+                            s.title = newName.trim();
+                            if(activeSceneId === s.id) document.getElementById('currentSceneTitleHeader').textContent = s.title;
+                            renderFloatingMenu();
+                        }
+                    });
+                };
+
                 const hideBtn = document.createElement('button');
                 hideBtn.className = `p-1 ${s.isHidden ? 'text-slate-400' : 'text-indigo-500 hover:text-indigo-700'}`;
                 hideBtn.title = s.isHidden ? "Scene is hidden from menu" : "Scene is visible in menu";
@@ -1069,6 +1101,7 @@
                     });
                 };
 
+                actionsDiv.appendChild(renameBtn);
                 actionsDiv.appendChild(hideBtn);
                 actionsDiv.appendChild(delBtn);
                 div.appendChild(actionsDiv);
@@ -1177,25 +1210,33 @@
                 const marker = document.createElement('div');
                 marker.id = `marker-${idx}`;
 
-                let baseClass = 'hotspot-marker absolute w-11 h-11 border-2 rounded-full flex items-center justify-center text-sm font-bold pointer-events-auto cursor-pointer shadow-lg transition-all ';
+                let baseClass = 'hotspot-marker absolute border-2 rounded-full flex items-center justify-center text-sm font-bold pointer-events-auto cursor-pointer shadow-lg ';
+                
+                let sizeMult = hs.hiddenSize || 1;
+                let dim = 44;
 
                 if (isEditMode) {
                     if (hs.isHidden) {
                         baseClass += 'bg-slate-500 border-white text-white border-dashed opacity-70';
                         marker.innerHTML = '?';
+                        dim = 44 * sizeMult;
                     } else {
                         baseClass += 'bg-indigo-500 border-white text-white';
                         marker.innerHTML = 'i';
                     }
                 } else {
-                    if (hs.isHidden && !builderTourCompleted) {
+                    if (hs.isHidden && !builderTourCompleted && !visitedHotspots[activeSceneId].has(idx)) {
                         baseClass += 'opacity-0 hover:opacity-30 bg-white border-white text-transparent hover:text-slate-800';
                         marker.innerHTML = '?';
+                        dim = 44 * sizeMult;
                     } else {
-                        baseClass += 'bg-indigo-500 border-white text-white';
+                        baseClass += 'bg-indigo-500 border-white text-white visited';
                         marker.innerHTML = 'i';
                     }
                 }
+                
+                marker.style.width = dim + 'px';
+                marker.style.height = dim + 'px';
 
                 marker.className = baseClass;
                 marker.onclick = (e) => {
@@ -1204,6 +1245,14 @@
                         if (!builderTourCompleted) builderTotalClicks++;
                         
                         visitedHotspots[activeSceneId].add(idx);
+                        
+                        marker.style.width = '44px';
+                        marker.style.height = '44px';
+                        marker.classList.add('visited');
+                        marker.classList.remove('opacity-0', 'hover:opacity-30', 'bg-white', 'text-transparent', 'hover:text-slate-800');
+                        marker.classList.add('bg-indigo-500', 'text-white');
+                        marker.innerHTML = 'i'; 
+                        
                         updateProgressHud();
                         if (s.transitConfig && visitedHotspots[activeSceneId].size === s.hotspots.length && !unlockedScenesInBuilder.has(activeSceneId)) {
                             document.getElementById('builderTransitBtnContainer').classList.remove('hidden');
@@ -1219,7 +1268,11 @@
                         document.getElementById('hsTitle').classList.remove('border-red-500');
                         document.getElementById('hsDesc').value = hs.desc || '';
                         document.getElementById('hsVideo').value = hs.videoUrl || '';
+                        
                         document.getElementById('hsIsHidden').checked = hs.isHidden || false;
+                        document.getElementById('hiddenSizeContainer').style.display = hs.isHidden ? 'block' : 'none';
+                        document.getElementById('hsHiddenSize').value = hs.hiddenSize || 3;
+                        document.getElementById('hsHiddenSizeVal').textContent = hs.hiddenSize || 3;
 
                         const select = document.getElementById('hsTargetScene');
                         select.innerHTML = '<option value="">None (Standard Point)</option>';
@@ -1275,7 +1328,7 @@
                         zoomFrame = requestAnimationFrame(zoomStep);
 
                         setTimeout(() => {
-                            cancelAnimationFrame(zoomFrame);
+                            cancelAnimationFrame(zFrame);
                             camera.fov = originalFov; // reset camera for the new scene
                             camera.updateProjectionMatrix();
                             switchScene(hs.targetSceneId);
@@ -1290,7 +1343,7 @@
 
             const p = document.getElementById('infoPopup');
             p.classList.remove('hidden');
-            updateHotspotMarkers();
+            updateHotspotMarkers(); // Instantly apply position
             setTimeout(() => { p.classList.remove('opacity-0'); p.classList.add('opacity-100'); }, 10);
         }
 
@@ -1604,6 +1657,14 @@
                 }
             );
         };
+        
+        // Hide/Show Hidden Size container dynamically
+        document.getElementById('hsIsHidden').onchange = (e) => {
+            document.getElementById('hiddenSizeContainer').style.display = e.target.checked ? 'block' : 'none';
+        };
+        document.getElementById('hsHiddenSize').oninput = (e) => {
+            document.getElementById('hsHiddenSizeVal').textContent = e.target.value;
+        };
 
         document.getElementById('saveHsBtn').onclick = () => {
             const titleInput = document.getElementById('hsTitle');
@@ -1619,6 +1680,7 @@
 
             const targetSceneId = document.getElementById('hsTargetScene').value;
             const isHidden = document.getElementById('hsIsHidden').checked;
+            const hiddenSize = parseInt(document.getElementById('hsHiddenSize').value, 10);
 
             if (currentEditingIndex !== null) {
                 s.hotspots[currentEditingIndex].title = t;
@@ -1626,6 +1688,7 @@
                 s.hotspots[currentEditingIndex].videoUrl = document.getElementById('hsVideo').value.trim();
                 s.hotspots[currentEditingIndex].targetSceneId = targetSceneId || null;
                 s.hotspots[currentEditingIndex].isHidden = isHidden;
+                s.hotspots[currentEditingIndex].hiddenSize = hiddenSize;
             } else if (pendingHotspotPos) {
                 s.hotspots.push({
                     title: t,
@@ -1633,6 +1696,7 @@
                     videoUrl: document.getElementById('hsVideo').value.trim(),
                     targetSceneId: targetSceneId || null,
                     isHidden: isHidden,
+                    hiddenSize: hiddenSize,
                     pos: { x: pendingHotspotPos.x, y: pendingHotspotPos.y, z: pendingHotspotPos.z }
                 });
             }
@@ -2177,7 +2241,7 @@
                 let secs = totalSecs % 60;
                 
                 if (tourTimer === 0) {
-                    document.getElementById('timeText').textContent = mins + ":" + secs.toString().padStart(2, '0');
+                    document.getElementById('timeText').textContent = \`\${mins}:\${secs.toString().padStart(2, '0')}\`;
                 }
                 
                 let acc = totalClicks > 0 ? Math.round((totalH / totalClicks) * 100) : 100;
@@ -2196,6 +2260,8 @@
                     if (div) {
                         div.classList.remove('hidden-hotspot');
                         div.innerHTML = 'i';
+                        div.style.width = '44px';
+                        div.style.height = '44px';
                     }
                 });
                 
@@ -2213,8 +2279,8 @@
             let secs = totalSecs % 60;
             
             let timeString = tourTimer > 0 
-                ? "You finished with " + document.getElementById('timeText').textContent + " remaining!"
-                : "You completed the journey in " + mins + "m " + secs + "s!";
+                ? \`You finished with \${document.getElementById('timeText').textContent} remaining!\`
+                : \`You completed the journey in \${mins}m \${secs}s!\`;
                 
             document.getElementById('completionTimeText').textContent = timeString;
 
@@ -2254,7 +2320,7 @@
                     let totalSecs = Math.floor(remaining / 1000);
                     let mins = Math.floor(totalSecs / 60);
                     let secs = totalSecs % 60;
-                    document.getElementById('timeText').textContent = mins + ":" + secs.toString().padStart(2, '0');
+                    document.getElementById('timeText').textContent = \`\${mins}:\${secs.toString().padStart(2, '0')}\`;
                 }, 1000);
             }
         }
@@ -2266,11 +2332,11 @@
             let unlockedHtml = '';
             scenes.forEach((s, i) => {
                 if(vis[i] && vis[i].size === s.hotspots.length) {
-                    unlockedHtml += "<li>✅ " + s.title + "</li>";
+                    unlockedHtml += \`<li>✅ \${s.title}</li>\`;
                 }
             });
             
-            document.getElementById('timeoutReport').innerHTML = unlockedHtml || "<li>No scenes fully explored.</li>";
+            document.getElementById('timeoutReport').innerHTML = unlockedHtml || \`<li>No scenes fully explored.</li>\`;
             
             const to = document.getElementById('timeoutOverlay');
             to.classList.remove('hidden');
@@ -2468,6 +2534,15 @@
                 div.id = 'h'+i; 
                 div.innerHTML = isHiddenNow ? '?' : 'i';
                 div.style.pointerEvents = 'auto';
+                
+                let sizeMult = h.hiddenSize || 1;
+                let dim = 44;
+                if (isHiddenNow && !vis[cur].has(i)) {
+                    dim = 44 * sizeMult;
+                }
+                div.style.width = dim + 'px';
+                div.style.height = dim + 'px';
+
                 if(vis[cur].has(i)) {
                     div.classList.add('visited');
                     div.innerHTML = 'i';
@@ -2477,6 +2552,8 @@
                     e.stopPropagation();
                     div.classList.add('visited');
                     div.innerHTML = 'i'; 
+                    div.style.width = '44px';
+                    div.style.height = '44px';
                     vis[cur].add(i);
                     updateHud();
                     showP(h, i);
@@ -2719,7 +2796,7 @@
         init();
     </${"script"}>
 </body>
-</html>`;
+</html>\`;
 
                 const blob = new Blob([exportHtml], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);
