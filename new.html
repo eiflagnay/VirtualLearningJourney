@@ -138,7 +138,7 @@
             <p class="text-slate-500 mb-8 leading-relaxed text-sm">
                 Create immersive, multi-scene interactive learning experiences. Add 360° panoramas, interactive hotspots with video and text, portal gates to jump between scenes, and linear quiz checkpoints with Gemini AI features!
             </p>
-            <button id="welcomeCreateBtn" class="bg-indigo-600 hover:bg-indigo-750 text-white font-bold px-8 py-3.5 rounded-xl shadow-lg shadow-indigo-100 transition-all hover:scale-102">
+            <button id="welcomeCreateBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-8 py-3.5 rounded-xl shadow-lg shadow-indigo-100 transition-all hover:scale-105">
                 + Create Your First Scene
             </button>
         </div>
@@ -179,13 +179,13 @@
                     <span id="progressTotal">0</span>
                 </div>
 
-                <button id="builderFinishJourneyBtn" class="absolute top-6 left-1/2 -translate-x-1/2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-full font-bold shadow-[0_0_15px_rgba(245,158,11,0.6)] z-40 transition-all duration-300 hidden animate-bounce border-2 border-amber-300">
+                <button id="builderFinishJourneyBtn" class="absolute top-6 left-1/2 -translate-x-1/2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-full font-bold shadow-[0_0_15px_rgba(245,158,11,0.6)] z-40 transition-all duration-300 hidden border-2 border-amber-300">
                     🎉 Finish Journey
                 </button>
 
                 <div id="transitionOverlay" class="absolute inset-0 bg-slate-950 z-[100] opacity-0 pointer-events-none transition-opacity duration-500"></div>
 
-                <div id="builderTransitBtnContainer" class="absolute bottom-8 transit-animate hidden z-40">
+                <div id="builderTransitBtnContainer" class="absolute bottom-8 hidden z-40">
                     <button id="builderTransitTriggerBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-full font-bold shadow-2xl flex items-center gap-2 transition-transform hover:scale-105 border-4 border-white">
                         <span>Transit Challenge</span>
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
@@ -252,8 +252,8 @@
                     </select>
                     <p class="text-xs text-slate-400 mt-1">Make this hotspot a portal that directly jumps to another scene.</p>
                 </div>
-                
-                <!-- NEW: Hidden Size Multiplier Controls -->
+
+                <!-- Hidden Size Multiplier Controls -->
                 <div class="pt-3 mt-2 border-t border-slate-100">
                     <div class="flex items-center justify-between">
                         <div>
@@ -262,7 +262,7 @@
                         </div>
                         <input type="checkbox" id="hsIsHidden" class="w-5 h-5 accent-indigo-600 cursor-pointer">
                     </div>
-                    
+
                     <div id="hiddenSizeContainer" class="mt-3 hidden bg-slate-50 p-3 rounded-lg border border-slate-200">
                         <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex justify-between">
                             <span>Hitbox Size</span>
@@ -349,7 +349,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Answer</label>
-                    <input type="text" id="configTransitAnswer" class="w-full border border-slate-300 rounded-md p-2 focus:ring-purple-500 focus:border-purple-500 outline-none" placeholder="e.g., Blue"></input>
+                    <input type="text" id="configTransitAnswer" class="w-full border border-slate-300 rounded-md p-2 focus:ring-purple-500 focus:border-purple-500 outline-none" placeholder="e.g., Blue">
                 </div>
             </div>
             <div class="flex justify-between items-center mt-6 pt-4 border-t border-slate-100">
@@ -400,7 +400,8 @@
                 <p class="font-bold mb-1">🗺️ Fast Travel Unlocked!</p>
                 <p class="text-sm">You can now use the Map to instantly travel to any location, and all hidden clues are now fully visible.</p>
             </div>
-            <button onclick="document.getElementById('builderCompleteOverlay').classList.add('hidden'); openBuilderMap();" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg w-full mb-3">Open Map</button>
+            <!-- PATCH 3a: inline onclick removed (module scope), now bound in JS -->
+            <button id="builderCompleteMapBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg w-full mb-3">Open Map</button>
             <button id="builderCompleteToEditBtn" class="text-slate-500 hover:text-slate-800 font-bold py-2 w-full">Back to Edit Mode</button>
         </div>
     </div>
@@ -520,14 +521,21 @@
         let builderTourCompleted = false;
         let builderTotalClicks = 0;
         let builderIsDragging = false;
-        
+
         let currentBgAudio = new Audio();
         currentBgAudio.loop = true;
-        
+
         let pendingHotspotPos = null;
         let currentEditingIndex = null;
         let activePopupIndex = null;
         let visitedHotspots = {}; // Track persistent hotspot discovery by scene ID
+
+        // PATCH 4a: always returns a live Set, creating it on demand (never undefined)
+        function visitedSet(sceneId) {
+            if (!visitedHotspots[sceneId]) visitedHotspots[sceneId] = new Set();
+            return visitedHotspots[sceneId];
+        }
+
         let unlockedScenesInBuilder = new Set();
         let initialPinchDistance = null;
         let initialFov = null;
@@ -657,7 +665,7 @@
             container.addEventListener('touchstart', onPointerStart, {passive: false});
             document.addEventListener('touchmove', onPointerMove, {passive: false});
             document.addEventListener('touchend', onPointerUp);
-            
+
             // Mouse Wheel Zoom
             container.addEventListener('wheel', (e) => {
                 e.preventDefault();
@@ -666,7 +674,7 @@
             }, {passive: false});
 
             window.addEventListener('resize', onWindowResize);
-            
+
             // UI Button Zoom
             document.getElementById('zoomInBtn').onclick = () => {
                 camera.fov = Math.max(20, camera.fov - 10);
@@ -686,7 +694,7 @@
         }
 
         function onPointerStart(event) {
-            if (event.target.closest('#floatingMenu') || event.target.closest('.hotspot-marker') || event.target.closest('#zoomControls') || event.target.closest('#builderFinishJourneyBtn') || anyModalOpen()) return;
+            if (event.target.closest('#floatingMenu') || event.target.closest('.hotspot-marker') || event.target.closest('#zoomControls') || event.target.closest('#builderFinishJourneyBtn') || event.target.closest('#builderTransitBtnContainer') || anyModalOpen()) return;
 
             const ptr = getPointer(event);
             isUserInteracting = true;
@@ -747,12 +755,12 @@
 
         function onPointerUp(event) {
             initialPinchDistance = null; // Reset pinch
-            
+
             const wasInteracting = isUserInteracting;
             isUserInteracting = false;
 
             if (!wasInteracting) return;
-            
+
             if (!builderIsDragging && !isEditMode && !builderTourCompleted) {
                 builderTotalClicks++;
             }
@@ -842,8 +850,8 @@
                 const vector = new THREE.Vector3(hs.pos.x, hs.pos.y, hs.pos.z);
                 vector.project(camera);
 
-                // Add visited class if already found
-                if(visitedHotspots[activeSceneId] && visitedHotspots[activeSceneId].has(idx)) {
+                // PATCH 4d: use the safe accessor
+                if (visitedSet(activeSceneId).has(idx)) {
                     marker.classList.add('visited');
                 } else {
                     marker.classList.remove('visited');
@@ -873,56 +881,66 @@
                 }
             }
         }
-        
+
         // --- Builder Preview Completion & Timer Logic ---
+
+        // PATCH 8a: Structural reachability from scene 0 — linear progression to the next
+        // VISIBLE scene, plus any portal target. Must stay identical to
+        // getReachableIndices() in the exported runtime.
+        function getReachableIndices() {
+            const reachable = new Set();
+            if (scenes.length === 0) return reachable;
+
+            const nextVisible = (i) => {
+                for (let j = i + 1; j < scenes.length; j++) if (!scenes[j].isHidden) return j;
+                return -1;
+            };
+
+            const stack = [0];
+            while (stack.length > 0) {
+                const i = stack.pop();
+                if (i === -1 || reachable.has(i)) continue;
+                reachable.add(i);
+
+                const s = scenes[i];
+                if (!s) continue;
+
+                const nxt = nextVisible(i);
+                if (nxt !== -1 && !reachable.has(nxt)) stack.push(nxt);
+
+                s.hotspots.forEach(h => {
+                    if (!h.targetSceneId) return;
+                    const t = scenes.findIndex(sc => sc.id === h.targetSceneId);
+                    if (t !== -1 && !reachable.has(t)) stack.push(t);
+                });
+            }
+            return reachable;
+        }
+
         function checkBuilderCompletion() {
             if (builderTourCompleted || scenes.length === 0) return;
 
-            const connected = new Set();
-            const stack = [scenes[0].id];
-
-            while (stack.length > 0) {
-                const currId = stack.pop();
-                if (connected.has(currId)) continue;
-                connected.add(currId);
-
-                const currSceneIdx = scenes.findIndex(s => s.id === currId);
-                const s = scenes[currSceneIdx];
-                if (!s) continue;
-
-                // Simple flow assumes unlocking next scene if no config, or if unlocked via quiz
-                if (unlockedScenesInBuilder.has(currId) || (!s.transitConfig && s.hotspots.length === 0)) {
-                    const nextScene = scenes[currSceneIdx + 1];
-                    if (nextScene && !nextScene.isHidden && !connected.has(nextScene.id)) stack.push(nextScene.id);
-                }
-
-                s.hotspots.forEach(h => {
-                    if (h.targetSceneId && !connected.has(h.targetSceneId)) stack.push(h.targetSceneId);
-                });
-            }
-
             let totalH = 0, totalV = 0;
-            connected.forEach(id => {
-                const s = scenes.find(sc => sc.id === id);
-                if (s) {
-                    totalH += s.hotspots.length;
-                    if (visitedHotspots[id]) totalV += visitedHotspots[id].size;
-                }
+            getReachableIndices().forEach(i => {
+                const s = scenes[i];
+                if (!s) return;
+                totalH += s.hotspots.length;
+                if (visitedHotspots[s.id]) totalV += visitedHotspots[s.id].size;
             });
 
             if (totalH > 0 && totalH === totalV) {
                 builderTourCompleted = true;
-                if(builderTimerInterval) clearInterval(builderTimerInterval);
-                
+                if (builderTimerInterval) clearInterval(builderTimerInterval);
+
                 let elapsed = Date.now() - builderStartTime;
                 let totalSecs = Math.floor(elapsed / 1000);
                 let mins = Math.floor(totalSecs / 60);
                 let secs = totalSecs % 60;
-                
+
                 if (tourTimer === 0) {
                     document.getElementById('builderTimeText').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
                 }
-                
+
                 let acc = builderTotalClicks > 0 ? Math.round((totalH / builderTotalClicks) * 100) : 100;
                 if (acc > 100) acc = 100;
                 document.getElementById('builderAccuracyText').textContent = acc + '%';
@@ -932,39 +950,51 @@
                 btd.classList.remove('hidden');
                 btd.classList.add('bg-emerald-600', 'border-emerald-500', 'border-2');
                 btd.classList.remove('bg-slate-900/80');
-                
+
                 renderHotspots(); // This unhides the hidden points instantly
-                
+
                 document.getElementById('progressHud').classList.add('hidden');
                 document.getElementById('builderFinishJourneyBtn').classList.remove('hidden');
             }
         }
-        
+
         document.getElementById('builderFinishJourneyBtn').onclick = () => {
             document.getElementById('builderFinishJourneyBtn').classList.add('hidden');
-            
+
             let elapsed = Date.now() - builderStartTime;
             let totalSecs = Math.floor(elapsed / 1000);
             let mins = Math.floor(totalSecs / 60);
             let secs = totalSecs % 60;
-            
-            let timeString = tourTimer > 0 
+
+            let timeString = tourTimer > 0
                 ? `You finished with ${document.getElementById('builderTimeText').textContent} remaining!`
                 : `You completed the journey in ${mins}m ${secs}s!`;
-                
+
             document.getElementById('builderCompletionTimeText').textContent = timeString;
 
             const over = document.getElementById('builderCompleteOverlay');
             over.classList.remove('hidden');
             setTimeout(() => over.classList.remove('opacity-0'), 50);
         };
-        
+
+        // PATCH 3b: shared hide helper + both overlay buttons bound in JS
+        function hideBuilderCompleteOverlay() {
+            const over = document.getElementById('builderCompleteOverlay');
+            over.classList.add('hidden', 'opacity-0'); // re-add opacity-0 so the fade works next time
+        }
+
+        document.getElementById('builderCompleteMapBtn').onclick = () => {
+            hideBuilderCompleteOverlay();
+            openBuilderMap();
+        };
+
         document.getElementById('builderCompleteToEditBtn').onclick = () => {
-            document.getElementById('builderCompleteOverlay').classList.add('hidden');
+            hideBuilderCompleteOverlay();
             document.getElementById('toggleModeBtn').click(); // Switch back to edit
         };
 
         function startBuilderTimer() {
+            if (builderTimerInterval) clearInterval(builderTimerInterval); // PATCH 4c: re-entrant
             builderStartTime = Date.now();
             if (tourTimer > 0) {
                 document.getElementById('builderTimerDisplay').classList.remove('hidden');
@@ -976,7 +1006,7 @@
                         remaining = 0;
                         handleBuilderTimeUp();
                     }
-                    
+
                     let totalSecs = Math.floor(remaining / 1000);
                     let mins = Math.floor(totalSecs / 60);
                     let secs = totalSecs % 60;
@@ -988,23 +1018,23 @@
         function handleBuilderTimeUp() {
             document.getElementById('transitionOverlay').classList.remove('opacity-0', 'pointer-events-none');
             document.getElementById('transitionOverlay').classList.add('opacity-100', 'pointer-events-auto');
-            
+
             let unlockedHtml = '';
             scenes.forEach(s => {
-                if(visitedHotspots[s.id] && visitedHotspots[s.id].size === s.hotspots.length) {
+                if (visitedHotspots[s.id] && s.hotspots.length > 0 && visitedHotspots[s.id].size === s.hotspots.length) {
                     unlockedHtml += `<li>✅ ${s.title}</li>`;
                 }
             });
-            
+
             document.getElementById('builderTimeoutReport').innerHTML = unlockedHtml || `<li>No scenes fully explored.</li>`;
-            
+
             const to = document.getElementById('builderTimeoutOverlay');
             to.classList.remove('hidden');
             setTimeout(() => to.classList.remove('opacity-0'), 50);
         }
-        
+
         document.getElementById('builderTimeoutCloseBtn').onclick = () => {
-            document.getElementById('builderTimeoutOverlay').classList.add('hidden');
+            document.getElementById('builderTimeoutOverlay').classList.add('hidden', 'opacity-0');
             document.getElementById('transitionOverlay').classList.add('opacity-0', 'pointer-events-none');
             document.getElementById('transitionOverlay').classList.remove('opacity-100', 'pointer-events-auto');
             document.getElementById('toggleModeBtn').click(); // Switch back to edit mode
@@ -1023,7 +1053,7 @@
             hud.classList.remove('bg-emerald-600', 'border-emerald-500', 'hud-complete');
             hud.classList.add('bg-slate-900/80', 'border-slate-700');
 
-            const discovered = visitedHotspots[activeSceneId] ? visitedHotspots[activeSceneId].size : 0;
+            const discovered = visitedSet(activeSceneId).size; // PATCH 4d
 
             document.getElementById('progressCount').textContent = discovered;
             document.getElementById('progressCount').className = discovered === s.hotspots.length ? 'text-white' : 'text-indigo-300';
@@ -1040,7 +1070,7 @@
         function setStatus(msg, type = 'info') {
             document.getElementById('statusText').textContent = msg;
             const banner = document.getElementById('statusBanner');
-            banner.className = `p-4 mb-6 rounded-r-md flex justify-between items-center transition-all border-l-4 ${type === 'error' ? 'bg-red-50 border-red-500 text-red-800' : 'bg-indigo-50 border-indigo-500 text-indigo-800'}`;
+            banner.className = `p-4 mb-6 rounded-r-md w-full flex justify-between items-center transition-all border-l-4 ${type === 'error' ? 'bg-red-50 border-red-500 text-red-800' : (type === 'success' ? 'bg-emerald-50 border-emerald-500 text-emerald-800' : 'bg-indigo-50 border-indigo-500 text-indigo-800')}`;
         }
 
         function renderFloatingMenu() {
@@ -1068,7 +1098,7 @@
                     customPrompt(`Rename Scene:`, s.title, (newName) => {
                         if (newName && newName.trim()) {
                             s.title = newName.trim();
-                            if(activeSceneId === s.id) document.getElementById('currentSceneTitleHeader').textContent = s.title;
+                            if (activeSceneId === s.id) document.getElementById('currentSceneTitleHeader').textContent = s.title;
                             renderFloatingMenu();
                         }
                     });
@@ -1121,7 +1151,7 @@
             currentBgAudio.src = '';
 
             // Persist hotspot discovery natively per scene
-            if (id && !visitedHotspots[id]) visitedHotspots[id] = new Set();
+            if (id) visitedSet(id);
 
             if (!s) {
                 document.getElementById('workspaceSection').classList.add('hidden');
@@ -1185,8 +1215,16 @@
                 );
                 renderHotspots();
                 updateProgressHud();
+
+                // PATCH 7 (builder parity): re-show the Transit button when revisiting a
+                // scene that is already fully explored but not yet unlocked.
+                if (!isEditMode && !builderTourCompleted && s.transitConfig &&
+                    (s.hotspots.length === 0 || visitedSet(s.id).size === s.hotspots.length) &&
+                    !unlockedScenesInBuilder.has(s.id)) {
+                    document.getElementById('builderTransitBtnContainer').classList.remove('hidden');
+                }
             }
-            
+
             if (s.localAudioSrc || s.audioSrc) {
                 currentBgAudio.src = s.localAudioSrc || s.audioSrc;
                 currentBgAudio.play().catch(e => console.log("Audio blocked:", e));
@@ -1196,7 +1234,7 @@
                 document.getElementById('addAudioBtnText').textContent = "Add Audio";
                 document.getElementById('clearAudioBtn').classList.add('hidden');
             }
-            
+
             renderFloatingMenu();
         }
 
@@ -1211,7 +1249,7 @@
                 marker.id = `marker-${idx}`;
 
                 let baseClass = 'hotspot-marker absolute border-2 rounded-full flex items-center justify-center text-sm font-bold pointer-events-auto cursor-pointer shadow-lg ';
-                
+
                 let sizeMult = hs.hiddenSize || 1;
                 let dim = 44;
 
@@ -1225,16 +1263,17 @@
                         marker.innerHTML = 'i';
                     }
                 } else {
-                    if (hs.isHidden && !builderTourCompleted && !visitedHotspots[activeSceneId].has(idx)) {
+                    // PATCH 4d: safe accessor
+                    if (hs.isHidden && !builderTourCompleted && !visitedSet(activeSceneId).has(idx)) {
                         baseClass += 'opacity-0 hover:opacity-30 bg-white border-white text-transparent hover:text-slate-800';
                         marker.innerHTML = '?';
                         dim = 44 * sizeMult;
                     } else {
-                        baseClass += 'bg-indigo-500 border-white text-white visited';
+                        baseClass += 'bg-indigo-500 border-white text-white';
                         marker.innerHTML = 'i';
                     }
                 }
-                
+
                 marker.style.width = dim + 'px';
                 marker.style.height = dim + 'px';
 
@@ -1243,18 +1282,18 @@
                     e.stopPropagation();
                     if (!isEditMode) {
                         if (!builderTourCompleted) builderTotalClicks++;
-                        
-                        visitedHotspots[activeSceneId].add(idx);
-                        
+
+                        visitedSet(activeSceneId).add(idx); // PATCH 4d
+
                         marker.style.width = '44px';
                         marker.style.height = '44px';
                         marker.classList.add('visited');
                         marker.classList.remove('opacity-0', 'hover:opacity-30', 'bg-white', 'text-transparent', 'hover:text-slate-800');
                         marker.classList.add('bg-indigo-500', 'text-white');
-                        marker.innerHTML = 'i'; 
-                        
+                        marker.innerHTML = 'i';
+
                         updateProgressHud();
-                        if (s.transitConfig && visitedHotspots[activeSceneId].size === s.hotspots.length && !unlockedScenesInBuilder.has(activeSceneId)) {
+                        if (s.transitConfig && visitedSet(activeSceneId).size === s.hotspots.length && !unlockedScenesInBuilder.has(activeSceneId)) {
                             document.getElementById('builderTransitBtnContainer').classList.remove('hidden');
                         }
                         checkBuilderCompletion();
@@ -1268,7 +1307,7 @@
                         document.getElementById('hsTitle').classList.remove('border-red-500');
                         document.getElementById('hsDesc').value = hs.desc || '';
                         document.getElementById('hsVideo').value = hs.videoUrl || '';
-                        
+
                         document.getElementById('hsIsHidden').checked = hs.isHidden || false;
                         document.getElementById('hiddenSizeContainer').style.display = hs.isHidden ? 'block' : 'none';
                         document.getElementById('hsHiddenSize').value = hs.hiddenSize || 3;
@@ -1297,8 +1336,9 @@
         function openPopup(hs, idx) {
             currentEditingIndex = idx;
             activePopupIndex = idx;
-            document.getElementById('popupTitle').textContent = hs.title;
-            document.getElementById('popupDesc').textContent = hs.desc;
+            // PATCH 6c: tolerate missing fields
+            document.getElementById('popupTitle').textContent = hs.title || '';
+            document.getElementById('popupDesc').textContent = hs.desc || '';
             const vid = document.getElementById('popupVideo');
             const embed = getEmbedUrl(hs.videoUrl);
             if (embed) { vid.src = embed; vid.classList.remove('hidden'); } else { vid.src = ''; vid.classList.add('hidden'); }
@@ -1328,7 +1368,7 @@
                         zoomFrame = requestAnimationFrame(zoomStep);
 
                         setTimeout(() => {
-                            cancelAnimationFrame(zFrame);
+                            cancelAnimationFrame(zoomFrame); // PATCH 1: was cancelAnimationFrame(zFrame)
                             camera.fov = originalFov; // reset camera for the new scene
                             camera.updateProjectionMatrix();
                             switchScene(hs.targetSceneId);
@@ -1352,7 +1392,7 @@
             const p = document.getElementById('infoPopup');
             p.classList.remove('opacity-100');
             p.style.visibility = ''; // Reset visibility state
-            setTimeout(() => { p.classList.add('hidden'); document.getElementById('popupVideo').src = ''; }, 200);
+            setTimeout(() => { p.classList.add('hidden', 'opacity-0'); document.getElementById('popupVideo').src = ''; }, 200);
         }
 
         function getEmbedUrl(url) {
@@ -1397,7 +1437,7 @@
                 profile.classList.add('flex');
 
                 const avatar = document.getElementById('userAvatar');
-                if(user.photoURL) {
+                if (user.photoURL) {
                     avatar.innerHTML = `<img src="${user.photoURL}" class="w-full h-full object-cover">`;
                 } else {
                     avatar.textContent = user.email ? user.email.charAt(0).toUpperCase() : 'U';
@@ -1461,7 +1501,10 @@
 
         document.getElementById('signOutBtn').onclick = () => {
             signOut(auth).then(() => {
+                if (builderTimerInterval) clearInterval(builderTimerInterval);
                 scenes = [];
+                visitedHotspots = {};
+                unlockedScenesInBuilder.clear();
                 switchScene(null);
             });
         };
@@ -1477,7 +1520,7 @@
         document.getElementById('builderMomentumToggle').onchange = (e) => {
             isMomentumEnabled = e.target.checked;
         };
-        
+
         document.getElementById('builderAudioToggle').onchange = (e) => {
             currentBgAudio.muted = !e.target.checked;
         };
@@ -1533,7 +1576,7 @@
             s.localAudioSrc = URL.createObjectURL(file);
             currentBgAudio.src = s.localAudioSrc;
             currentBgAudio.play().catch(err => console.log("Autoplay blocked:", err));
-            
+
             document.getElementById('addAudioBtnText').textContent = "Change Audio";
             document.getElementById('clearAudioBtn').classList.remove('hidden');
             setStatus(`Uploading audio ${file.name}...`, "info");
@@ -1583,7 +1626,7 @@
                         } else {
                             tourIntro = { title: "Welcome to the Journey", desc: "Explore the environment and click on the information points to learn more!" };
                         }
-                        
+
                         if (timerMatch && timerMatch[1]) {
                             tourTimer = parseInt(timerMatch[1], 10);
                         } else {
@@ -1596,6 +1639,7 @@
                         pendingHotspotPos = null;
                         visitedHotspots = {}; // Fresh persistence tracking map
                         unlockedScenesInBuilder.clear();
+                        builderTourCompleted = false;
 
                         setStatus("Tour imported successfully!", "success");
                         switchScene(scenes.length > 0 ? scenes[0].id : null);
@@ -1656,8 +1700,10 @@
                     }
                 }
             );
+
+            e.target.value = '';
         };
-        
+
         // Hide/Show Hidden Size container dynamically
         document.getElementById('hsIsHidden').onchange = (e) => {
             document.getElementById('hiddenSizeContainer').style.display = e.target.checked ? 'block' : 'none';
@@ -1734,26 +1780,27 @@
                 // Entering Preview
                 unlockedScenesInBuilder.clear();
                 builderTourCompleted = false;
-                builderTotalClicks = 0; 
-                
+                builderTotalClicks = 0;
+                visitedHotspots = {}; // PATCH 4b: fresh run — nothing discovered yet
+
                 document.getElementById('builderAccuracyContainer').classList.add('hidden');
                 const btd = document.getElementById('builderTimerDisplay');
                 btd.classList.add('bg-slate-900/80');
                 btd.classList.remove('bg-emerald-600', 'border-emerald-500', 'border-2');
-                if(tourTimer === 0) btd.classList.add('hidden');
+                if (tourTimer === 0) btd.classList.add('hidden');
 
                 startBuilderTimer();
-                
+
                 document.getElementById('toggleModeBtn').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Edit Mode';
                 setStatus("Preview Mode: Testing interactions, timers, and transitions.");
             } else {
                 // Entering Edit
-                if(builderTimerInterval) clearInterval(builderTimerInterval);
+                if (builderTimerInterval) clearInterval(builderTimerInterval);
                 document.getElementById('builderTimerDisplay').classList.add('hidden');
                 document.getElementById('builderFinishJourneyBtn').classList.add('hidden');
                 document.getElementById('builderTimeoutOverlay').classList.add('hidden');
                 document.getElementById('builderCompleteOverlay').classList.add('hidden');
-                
+
                 document.getElementById('toggleModeBtn').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Preview Mode';
                 setStatus("Edit Mode: Click in the viewer to add info points.");
             }
@@ -1978,14 +2025,15 @@
         .hidden-hotspot:hover { background: rgba(255,255,255,0.2) !important; border-color: rgba(255,255,255,0.4) !important; color: white !important; }
         .hud-complete { background-color: #10b981 !important; border-color: #059669 !important; animation: pulseGreen 2s infinite; }
         #menu { position: fixed; bottom: 20px; right: 20px; z-index: 100; }
-        @keyframes bounce { 0%, 100% { transform: translateY(0) translateX(-50%); } 50% { transform: translateY(-10px) translateX(-50%); } }
+        @keyframes bounceCentered { 0%, 100% { transform: translateY(0) translateX(-50%); } 50% { transform: translateY(-10px) translateX(-50%); } }
         @keyframes pulseGreen { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
-        .transit-btn { animation: bounce 2s infinite; left: 50%; }
+        .transit-btn { animation: bounceCentered 2s infinite; left: 50%; }
+        .finish-btn { animation: bounceCentered 2s infinite; left: 50%; }
     </style>
 </head>
 <body>
     <div id="container" style="width: 100vw; height: 100vh;"></div>
-    <div id="overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-10"></div>
+    <div id="overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;"></div>
 
     <div id="zoomControls" style="position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 90;">
         <button id="zIn" style="width: 40px; height: 40px; border-radius: 50%; background: rgba(30,41,59,0.8); color: white; border: 1px solid #475569; font-size: 20px; font-weight: bold; cursor: pointer; backdrop-filter: blur(4px); transition: transform 0.1s;">+</button>
@@ -2005,7 +2053,7 @@
         <span id="pTotal">0</span>
     </div>
 
-    <button id="finishJourneyBtn" class="absolute top-6 left-1/2 -translate-x-1/2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-full font-bold shadow-[0_0_15px_rgba(245,158,11,0.6)] z-40 transition-all duration-300 hidden animate-bounce border-2 border-amber-300">
+    <button id="finishJourneyBtn" class="absolute top-6 finish-btn bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-full font-bold shadow-[0_0_15px_rgba(245,158,11,0.6)] z-40 hidden border-2 border-amber-300">
         🎉 Finish Journey
     </button>
 
@@ -2167,8 +2215,19 @@
         const scenes = ${JSON.stringify(exportScenes)};
         const tourIntro = ${JSON.stringify(tourIntro)};
         const tourTimer = ${tourTimer};
-        
-        let cur = 0, max = 0, lon = 0, lat = 0;
+
+        // PATCH 7a: unlocked Set replaces the single "max" frontier
+        let cur = 0, lon = 0, lat = 0;
+        let unlocked = new Set([0]);
+
+        function unlockScene(i) {
+            if (i === -1 || i === undefined || i < 0 || i >= scenes.length) return false;
+            if (unlocked.has(i)) return false;
+            unlocked.add(i);
+            return true;
+        }
+        function isUnlocked(i) { return tourCompleted || unlocked.has(i); }
+
         let scene, camera, renderer, sphere;
         let vis = {};
         let activeP = null;
@@ -2176,7 +2235,7 @@
         let bgAudio = new Audio();
         bgAudio.loop = true;
         let initPinchDist = null, initFov = null;
-        
+
         let startTime = 0;
         let timerInterval = null;
         let totalClicks = 0;
@@ -2192,58 +2251,83 @@
             return -1;
         }
 
+        // PATCH 7b: recomputes the Transit button + linear unlock for the CURRENT scene.
+        // Safe to call on every scene load and after every hotspot click.
+        function refreshProgressGates() {
+            const s = scenes[cur];
+            const tc = document.getElementById('transitContainer');
+            if (!s) { tc.classList.add('hidden'); return; }
+
+            const found = vis[cur] ? vis[cur].size : 0;
+            const done = s.hotspots.length === 0 || found === s.hotspots.length;
+            if (!done) { tc.classList.add('hidden'); return; }
+
+            const nxt = getNextVis(cur);
+            if (s.transitConfig) {
+                // show the challenge until it has actually unlocked the next site
+                if (!tourCompleted && nxt !== -1 && !unlocked.has(nxt)) tc.classList.remove('hidden');
+                else tc.classList.add('hidden');
+            } else {
+                tc.classList.add('hidden');
+                if (unlockScene(nxt)) { renderMenu(); showUnlockToast(); }
+            }
+        }
+
         function getPtr(e) {
             if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
             if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
             return { x: e.clientX, y: e.clientY };
         }
 
+        // PATCH 8b: structural reachability from scene 0 — mirror of the builder's version.
+        function getReachableIndices() {
+            const reachable = new Set();
+            if (scenes.length === 0) return reachable;
+
+            const stack = [0];
+            while (stack.length > 0) {
+                const i = stack.pop();
+                if (i === -1 || reachable.has(i)) continue;
+                reachable.add(i);
+
+                const s = scenes[i];
+                if (!s) continue;
+
+                const nxt = getNextVis(i);
+                if (nxt !== -1 && !reachable.has(nxt)) stack.push(nxt);
+
+                s.hotspots.forEach(h => {
+                    if (!h.targetSceneId) return;
+                    const t = scenes.findIndex(sc => sc.id === h.targetSceneId);
+                    if (t !== -1 && !reachable.has(t)) stack.push(t);
+                });
+            }
+            return reachable;
+        }
+
         function checkCompletion() {
             if (tourCompleted || scenes.length === 0) return;
 
-            const connected = new Set();
-            const stack = [0];
-
-            while (stack.length > 0) {
-                const currIdx = stack.pop();
-                if (connected.has(currIdx)) continue;
-                connected.add(currIdx);
-
-                const s = scenes[currIdx];
-                if (!s) continue;
-
-                const nxt = getNextVis(currIdx);
-                if (nxt !== -1 && !connected.has(nxt)) stack.push(nxt);
-
-                s.hotspots.forEach(h => {
-                    if (h.targetSceneId) {
-                        const targetIdx = scenes.findIndex(sc => sc.id === h.targetSceneId);
-                        if (targetIdx !== -1 && !connected.has(targetIdx)) stack.push(targetIdx);
-                    }
-                });
-            }
-
             let totalH = 0, totalV = 0;
-            connected.forEach(idx => {
-                if (scenes[idx]) {
-                    totalH += scenes[idx].hotspots.length;
-                    if (vis[idx]) totalV += vis[idx].size;
-                }
+            getReachableIndices().forEach(idx => {
+                if (!scenes[idx]) return;
+                totalH += scenes[idx].hotspots.length;
+                if (vis[idx]) totalV += vis[idx].size;
             });
 
             if (totalH > 0 && totalH === totalV) {
                 tourCompleted = true;
                 if(timerInterval) clearInterval(timerInterval);
-                
+
                 let elapsed = Date.now() - startTime;
                 let totalSecs = Math.floor(elapsed / 1000);
                 let mins = Math.floor(totalSecs / 60);
                 let secs = totalSecs % 60;
-                
+
                 if (tourTimer === 0) {
                     document.getElementById('timeText').textContent = \`\${mins}:\${secs.toString().padStart(2, '0')}\`;
                 }
-                
+
                 let acc = totalClicks > 0 ? Math.round((totalH / totalClicks) * 100) : 100;
                 if (acc > 100) acc = 100;
                 document.getElementById('accuracyText').textContent = acc + '%';
@@ -2264,24 +2348,24 @@
                         div.style.height = '44px';
                     }
                 });
-                
+
                 document.getElementById('progressHud').classList.add('hidden');
                 document.getElementById('finishJourneyBtn').classList.remove('hidden');
             }
         }
-        
+
         document.getElementById('finishJourneyBtn').onclick = () => {
             document.getElementById('finishJourneyBtn').classList.add('hidden');
-            
+
             let elapsed = Date.now() - startTime;
             let totalSecs = Math.floor(elapsed / 1000);
             let mins = Math.floor(totalSecs / 60);
             let secs = totalSecs % 60;
-            
-            let timeString = tourTimer > 0 
+
+            let timeString = tourTimer > 0
                 ? \`You finished with \${document.getElementById('timeText').textContent} remaining!\`
                 : \`You completed the journey in \${mins}m \${secs}s!\`;
-                
+
             document.getElementById('completionTimeText').textContent = timeString;
 
             const btn = document.getElementById('openMapMenuBtn');
@@ -2295,6 +2379,8 @@
                 };
             }
 
+            // PATCH 8c: fast travel — everything becomes reachable from the menu
+            scenes.forEach((s, i) => unlockScene(i));
             renderMenu();
 
             const over = document.getElementById('completeOverlay');
@@ -2305,6 +2391,7 @@
         };
 
         function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
             startTime = Date.now();
             if (tourTimer > 0) {
                 document.getElementById('timerDisplay').classList.remove('hidden');
@@ -2316,7 +2403,7 @@
                         remaining = 0;
                         handleTimeUp();
                     }
-                    
+
                     let totalSecs = Math.floor(remaining / 1000);
                     let mins = Math.floor(totalSecs / 60);
                     let secs = totalSecs % 60;
@@ -2328,16 +2415,16 @@
         function handleTimeUp() {
             document.getElementById('fadeOverlay').classList.remove('opacity-0', 'pointer-events-none');
             document.getElementById('fadeOverlay').classList.add('opacity-100', 'pointer-events-auto');
-            
+
             let unlockedHtml = '';
             scenes.forEach((s, i) => {
-                if(vis[i] && vis[i].size === s.hotspots.length) {
+                if(vis[i] && s.hotspots.length > 0 && vis[i].size === s.hotspots.length) {
                     unlockedHtml += \`<li>✅ \${s.title}</li>\`;
                 }
             });
-            
+
             document.getElementById('timeoutReport').innerHTML = unlockedHtml || \`<li>No scenes fully explored.</li>\`;
-            
+
             const to = document.getElementById('timeoutOverlay');
             to.classList.remove('hidden');
             setTimeout(() => to.classList.remove('opacity-0'), 50);
@@ -2394,12 +2481,12 @@
 
             window.onresize = () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
 
-            const start = (e) => { 
-                isD = true; 
+            const start = (e) => {
+                isD = true;
                 isDragging = false;
-                const p = getPtr(e); mx = p.x; my = p.y; mL = lon; mLat = lat; 
+                const p = getPtr(e); mx = p.x; my = p.y; mL = lon; mLat = lat;
             };
-            const move = (e) => { 
+            const move = (e) => {
                 if (e.touches && e.touches.length === 2) {
                     if (e.cancelable) e.preventDefault();
                     const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -2413,20 +2500,20 @@
                     }
                     return;
                 }
-                if(!isD) return; 
-                if(e.cancelable) e.preventDefault(); 
-                const p = getPtr(e); 
-                lon = (mx - p.x) * 0.1 + mL; lat = (p.y - my) * 0.1 + mLat; 
+                if(!isD) return;
+                if(e.cancelable) e.preventDefault();
+                const p = getPtr(e);
+                lon = (mx - p.x) * 0.1 + mL; lat = (p.y - my) * 0.1 + mLat;
                 if (Math.abs(p.x - mx) > 10 || Math.abs(p.y - my) > 10) isDragging = true;
             };
-            const up = () => { 
+            const up = () => {
                 if (isD && !isDragging && !tourCompleted) {
                     if (document.getElementById('introOverlay').classList.contains('hidden')) {
                         totalClicks++;
                     }
                 }
-                isD = false; 
-                initPinchDist = null; 
+                isD = false;
+                initPinchDist = null;
             };
 
             c.addEventListener('mousedown', start);
@@ -2435,7 +2522,7 @@
             c.addEventListener('touchstart', start, {passive:false});
             document.addEventListener('touchmove', move, {passive:false});
             document.addEventListener('touchend', up);
-            
+
             c.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 camera.fov = Math.max(20, Math.min(100, camera.fov + e.deltaY * 0.05));
@@ -2452,9 +2539,9 @@
                     const overlay = document.getElementById('introOverlay');
                     overlay.classList.add('opacity-0');
                     setTimeout(() => overlay.classList.add('hidden'), 500);
-                    
+
                     startTimer();
-                    
+
                     if (bgAudio.src && bgAudio.src !== window.location.href) {
                         bgAudio.play().catch(e => console.log("Autoplay blocked:", e));
                     }
@@ -2468,10 +2555,17 @@
         }
 
         function load(idx) {
+            // PATCH 6a: guard BEFORE any dereference of the scene
+            const s = scenes[idx];
+            if (!s) {
+                showError("No valid scene found in this tour file.");
+                return;
+            }
+
             cur = idx;
             bgAudio.pause();
-            if (scenes[idx].audioSrc) {
-                bgAudio.src = scenes[idx].audioSrc;
+            if (s.audioSrc) {
+                bgAudio.src = s.audioSrc;
                 if (document.getElementById('introOverlay').classList.contains('hidden')) {
                     bgAudio.play().catch(e => console.log("Autoplay blocked:", e));
                 }
@@ -2480,12 +2574,6 @@
             }
 
             if (!vis[cur]) vis[cur] = new Set();
-
-            const s = scenes[idx];
-            if (!s) {
-                showError("No valid scene found in this tour file.");
-                return;
-            }
 
             document.getElementById('loadingOverlay').classList.remove('opacity-0', 'pointer-events-none');
             document.getElementById('loadingOverlay').classList.add('opacity-100', 'pointer-events-auto');
@@ -2528,13 +2616,13 @@
 
             document.getElementById('overlay').innerHTML = ''; document.getElementById('transitContainer').classList.add('hidden'); closeP();
             s.hotspots.forEach((h, i) => {
-                const div = document.createElement('div'); 
+                const div = document.createElement('div');
                 const isHiddenNow = h.isHidden && !tourCompleted;
-                div.className = 'hotspot' + (isHiddenNow ? ' hidden-hotspot' : ''); 
-                div.id = 'h'+i; 
+                div.className = 'hotspot' + (isHiddenNow ? ' hidden-hotspot' : '');
+                div.id = 'h'+i;
                 div.innerHTML = isHiddenNow ? '?' : 'i';
                 div.style.pointerEvents = 'auto';
-                
+
                 let sizeMult = h.hiddenSize || 1;
                 let dim = 44;
                 if (isHiddenNow && !vis[cur].has(i)) {
@@ -2550,44 +2638,30 @@
 
                 div.onclick = (e) => {
                     e.stopPropagation();
+                    if (!tourCompleted) totalClicks++; // PATCH 5: hotspot hits must count toward accuracy
                     div.classList.add('visited');
-                    div.innerHTML = 'i'; 
+                    div.innerHTML = 'i';
                     div.style.width = '44px';
                     div.style.height = '44px';
                     vis[cur].add(i);
                     updateHud();
                     showP(h, i);
-
-                    if (vis[cur].size === s.hotspots.length) {
-                        if (s.transitConfig && cur === max) {
-                            document.getElementById('transitContainer').classList.remove('hidden');
-                        } else if (!s.transitConfig && cur === max) {
-                            const nxt = getNextVis(cur);
-                            if (nxt !== -1) {
-                                max = Math.max(max, nxt);
-                                renderMenu();
-                                showUnlockToast();
-                            }
-                        }
-                    }
+                    refreshProgressGates(); // PATCH 7c
                     checkCompletion();
                 };
                 document.getElementById('overlay').appendChild(div);
             });
 
-            if (!s.transitConfig && s.hotspots.length === 0 && cur === max) {
-                const nxt = getNextVis(cur);
-                if (nxt !== -1) max = Math.max(max, nxt);
-            }
-
             renderMenu();
             updateHud();
+            refreshProgressGates(); // PATCH 7d: re-show the Transit button when revisiting a completed scene
         }
 
         function showP(h, idx) {
             activeP = idx;
-            document.getElementById('pTitle').textContent = h.title; document.getElementById('pDesc').textContent = h.desc;
-            const vid = document.getElementById('pVid'); const yt = h.videoUrl.match(/(?:youtu\\.be\\/|youtube\\.com\\/(?:embed\\/|v\\/|watch\\?v=))([\\w-]{11})/);
+            // PATCH 6b: tolerate missing fields
+            document.getElementById('pTitle').textContent = h.title || ''; document.getElementById('pDesc').textContent = h.desc || '';
+            const vid = document.getElementById('pVid'); const yt = (h.videoUrl || '').match(/(?:youtu\\.be\\/|youtube\\.com\\/(?:embed\\/|v\\/|watch\\?v=))([\\w-]{11})/);
             if(yt) { vid.src = 'https://www.youtube.com/embed/'+yt[1]; vid.classList.remove('hidden'); } else { vid.src = ''; vid.classList.add('hidden'); }
 
             const tBtn = document.getElementById('pTransitBtn');
@@ -2614,6 +2688,7 @@
                         setTimeout(() => {
                             cancelAnimationFrame(zFrame);
                             camera.fov = origFov; camera.updateProjectionMatrix();
+                            unlockScene(targetIdx); // PATCH 7e: portals now unlock their destination
                             load(targetIdx);
                         }, 500);
                     };
@@ -2663,7 +2738,7 @@
                 b.className = 'relative z-10 px-5 py-3 rounded-xl font-bold shadow-xl border-2 transition-transform hover:scale-105 ' +
                               (i === cur ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-800 border-slate-200');
                 b.textContent = s.title + (s.isHidden ? ' 🤫' : '');
-                b.onclick = () => { closeMap(); max = Math.max(max, i); load(i); };
+                b.onclick = () => { closeMap(); unlockScene(i); load(i); }; // PATCH 7f
                 cont.appendChild(b);
                 els[s.id] = b;
             });
@@ -2711,9 +2786,10 @@
             scenes.forEach((s, i) => {
                 if (s.isHidden && !tourCompleted) return;
                 const b = document.createElement('button');
-                b.className = 'w-full text-left p-2 rounded ' + (i === cur ? 'bg-indigo-50 font-bold' : (i <= max || tourCompleted ? 'hover:bg-slate-100' : 'opacity-50'));
+                // PATCH 7g
+                b.className = 'w-full text-left p-2 rounded ' + (i === cur ? 'bg-indigo-50 font-bold' : (isUnlocked(i) ? 'hover:bg-slate-100' : 'opacity-50'));
                 b.textContent = (i+1)+'. '+s.title + (s.isHidden ? ' 🤫' : '');
-                if(i <= max || tourCompleted) b.onclick = () => { load(i); document.getElementById('menuPanel').classList.add('hidden'); };
+                if (isUnlocked(i)) b.onclick = () => { load(i); document.getElementById('menuPanel').classList.add('hidden'); };
                 links.appendChild(b);
             });
         }
@@ -2727,6 +2803,8 @@
             if (s.transitConfig) {
                 document.getElementById('qText').textContent = s.transitConfig.question;
                 document.getElementById('qAns').value = '';
+                const err = document.getElementById('qError');
+                if (err) err.textContent = '';
                 document.getElementById('quiz').classList.remove('hidden');
             }
         };
@@ -2738,9 +2816,7 @@
                 document.getElementById('transitContainer').classList.add('hidden');
                 const nxt = getNextVis(cur);
                 if (nxt !== -1) {
-                    if (cur === max) {
-                        max = Math.max(max, nxt);
-                    }
+                    unlockScene(nxt); // PATCH 7h
                     load(nxt);
                 }
                 checkCompletion();
@@ -2796,7 +2872,7 @@
         init();
     </${"script"}>
 </body>
-</html>\`;
+</html>`;
 
                 const blob = new Blob([exportHtml], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);
@@ -2804,6 +2880,7 @@
                 a.href = url;
                 a.download = finalFileName;
                 a.click();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
             });
         };
 
