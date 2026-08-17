@@ -1289,6 +1289,11 @@
             const s = scenes.find(sc => sc.id === activeSceneId);
             if (!s) return;
 
+            let hasUnclickedGatekeeper = false;
+            if (!isEditMode) {
+                hasUnclickedGatekeeper = s.hotspots.some((h, i) => h.isGatekeeper && !visitedSet(activeSceneId).has(i));
+            }
+
             s.hotspots.forEach((hs, idx) => {
                 const marker = document.createElement('div');
                 marker.id = `marker-${idx}`;
@@ -2206,7 +2211,7 @@
         <span id="pTotal">0</span>
     </div>
 
-    <button id="finishJourneyBtn" class="absolute top-6 finish-btn bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-full font-bold shadow-[0_0_15px_rgba(245,158,11,0.6)] z-40 hidden border-2 border-amber-300">
+    <button id="finishJourneyBtn" class="absolute top-6 left-1/2 -translate-x-1/2 finish-btn bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-full font-bold shadow-[0_0_15px_rgba(245,158,11,0.6)] z-40 hidden border-2 border-amber-300">
         🎉 Finish Journey
     </button>
 
@@ -2487,7 +2492,7 @@
                 let secs = totalSecs % 60;
 
                 if (tourTimer === 0) {
-                    document.getElementById('timeText').textContent = \`\${mins}:\${secs.toString().padStart(2, '0')}\`;
+                    document.getElementById('timeText').textContent = mins + ":" + secs.toString().padStart(2, '0');
                 }
 
                 let acc = totalClicks > 0 ? Math.round((totalH / totalClicks) * 100) : 100;
@@ -2507,7 +2512,7 @@
                         div.innerHTML = h.isGatekeeper ? '★' : 'i';
                         div.style.width = '44px';
                         div.style.height = '44px';
-                        div.style.display = 'flex'; // unhide any locked by gatekeepers
+                        div.style.display = 'flex'; 
                     }
                 });
 
@@ -2525,8 +2530,8 @@
             let secs = totalSecs % 60;
 
             let timeString = tourTimer > 0
-                ? \`You finished with \${document.getElementById('timeText').textContent} remaining!\`
-                : \`You completed the journey in \${mins}m \${secs}s!\`;
+                ? "You finished with " + document.getElementById('timeText').textContent + " remaining!"
+                : "You completed the journey in " + mins + "m " + secs + "s!";
 
             document.getElementById('completionTimeText').textContent = timeString;
 
@@ -2568,7 +2573,7 @@
                     let totalSecs = Math.floor(remaining / 1000);
                     let mins = Math.floor(totalSecs / 60);
                     let secs = totalSecs % 60;
-                    document.getElementById('timeText').textContent = \`\${mins}:\${secs.toString().padStart(2, '0')}\`;
+                    document.getElementById('timeText').textContent = mins + ":" + secs.toString().padStart(2, '0');
                 }, 1000);
             }
         }
@@ -2580,11 +2585,11 @@
             let unlockedHtml = '';
             scenes.forEach((s, i) => {
                 if(vis[i] && s.hotspots.length > 0 && vis[i].size === s.hotspots.length) {
-                    unlockedHtml += \`<li>✅ \${s.title}</li>\`;
+                    unlockedHtml += "<li>✅ " + s.title + "</li>";
                 }
             });
 
-            document.getElementById('timeoutReport').innerHTML = unlockedHtml || \`<li>No scenes fully explored.</li>\`;
+            document.getElementById('timeoutReport').innerHTML = unlockedHtml || "<li>No scenes fully explored.</li>";
 
             const to = document.getElementById('timeoutOverlay');
             to.classList.remove('hidden');
@@ -3040,7 +3045,7 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            if (isD) { lonVel = lon - prevLon; latVel = lat - prevLat; } else if (momentum) { lon += lonVel; lat += latVel; lonVel *= 0.92; latVel *= 0.92; }
+            if (isD) { lon Vel = lon - prevLon; latVel = lat - prevLat; } else if (momentum) { lon += lonVel; lat += latVel; lonVel *= 0.92; latVel *= 0.92; }
             lat = Math.max(-85, Math.min(85, lat));
             if (lat === 85 || lat === -85) latVel = 0;
             prevLon = lon; prevLat = lat;
@@ -3084,7 +3089,7 @@
         init();
     </${"script"}>
 </body>
-</html>\`;
+</html>`;
 
                 const blob = new Blob([exportHtml], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);
