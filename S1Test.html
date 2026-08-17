@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Virtual Learning Journey</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; position: fixed; width: 100%; height: 100%; touch-action: none; overscroll-behavior: none; }
+        .hotspot { position: absolute; width: 44px; height: 44px; font-size: 16px; background: #6366f1; border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer; transform: translate(-50%, -50%); box-shadow: 0 0 10px rgba(0,0,0,0.5); font-weight: bold; transition: background 0.3s; z-index: 10; }
+        .visited { background: #10b981 !important; border-color: #fff !important; color: #fff !important; opacity: 1 !important; box-shadow: 0 0 10px rgba(0,0,0,0.5) !important; }
+        .hidden-hotspot { background: transparent !important; border-color: transparent !important; color: transparent !important; box-shadow: none !important; transition: all 0.3s; }
+        .hidden-hotspot:hover { background: rgba(255,255,255,0.2) !important; border-color: rgba(255,255,255,0.4) !important; color: white !important; }
+        .hud-complete { background-color: #10b981 !important; border-color: #059669 !important; animation: pulseGreen 2s infinite; }
+        #menu { position: fixed; bottom: 20px; right: 20px; z-index: 100; }
+        @keyframes bounceCentered { 0%, 100% { transform: translateY(0) translateX(-50%); } 50% { transform: translateY(-10px) translateX(-50%); } }
+        @keyframes pulseGreen { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+        .transit-btn { animation: bounceCentered 2s infinite; left: 50%; }
+        .finish-btn { animation: bounceCentered 2s infinite; left: 50%; }
+    </style>
+</head>
+<body>
+    <div id="container" style="width: 100vw; height: 100vh;"></div>
+    <div id="overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;"></div>
+
+    <div id="zoomControls" style="position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 90;">
+        <button id="zIn" style="width: 40px; height: 40px; border-radius: 50%; background: rgba(30,41,59,0.8); color: white; border: 1px solid #475569; font-size: 20px; font-weight: bold; cursor: pointer; backdrop-filter: blur(4px); transition: transform 0.1s;">+</button>
+        <button id="zOut" style="width: 40px; height: 40px; border-radius: 50%; background: rgba(30,41,59,0.8); color: white; border: 1px solid #475569; font-size: 20px; font-weight: bold; cursor: pointer; backdrop-filter: blur(4px); transition: transform 0.1s;">-</button>
+    </div>
+
+    <!-- Timer Display -->
+    <div id="timerDisplay" class="absolute top-6 right-6 bg-slate-900/80 text-white px-5 py-2 rounded-full font-bold text-sm backdrop-blur shadow-lg z-40 transition-all duration-300 hidden">
+        <span id="timeTextContainer">⏱️ <span id="timeText">00:00</span></span>
+        <span id="accuracyContainer" class="hidden"> | 🎯 <span id="accuracyText">100%</span> Accuracy</span>
+    </div>
+
+    <div id="progressHud" class="absolute top-6 left-1/2 -translate-x-1/2 bg-slate-900/80 text-white px-5 py-2 rounded-full font-bold text-sm backdrop-blur shadow-lg z-40 transition-all duration-300 hidden flex items-center gap-2 border border-slate-700 pointer-events-none">
+        <span>🔍 Discovered:</span>
+        <span id="pCount" class="text-indigo-300">0</span>
+        <span class="text-slate-500">/</span>
+        <span id="pTotal">0</span>
+    </div>
+
+    <button id="finishJourneyBtn" class="absolute top-6 finish-btn bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-full font-bold shadow-[0_0_15px_rgba(245,158,11,0.6)] z-40 hidden border-2 border-amber-300">
+        🎉 Finish Journey
+    </button>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-slate-950 z-[99999] flex flex-col items-center justify-center transition-all duration-500">
+        <div id="loadingContent" class="text-center">
+            <div class="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-white font-medium text-lg tracking-wide">Loading 360° Experience...</p>
+            <p id="loadingStatusText" class="text-slate-400 text-sm mt-2">Fetching scene panorama...</p>
+        </div>
+        <div id="errorBox" class="max-w-md w-full mx-4 bg-slate-900 border border-red-500/30 rounded-2xl p-6 text-center hidden">
+            <div class="bg-red-500/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+            <h3 class="text-white font-bold text-lg mb-2">Image Loading Blocked (CORS)</h3>
+            <p class="text-slate-400 text-sm mb-4 leading-relaxed">
+                WebGL requires cross-origin permission to render this 360° image. Please make sure you have configured CORS rules on your Firebase Storage bucket.
+            </p>
+            <div class="bg-slate-950 rounded-lg p-3 text-left font-mono text-xs text-slate-300 overflow-x-auto mb-4 max-h-24">
+                1. Paste this in Cloud Shell:<br>
+                echo '[{"origin": ["*"],"method": ["GET"],"maxAgeSeconds": 3600}]' > cors.json<br><br>
+                2. Apply rule:<br>
+                gsutil cors set cors.json gs://virtuallearningjourney.firebasestorage.app
+            </div>
+            <button onclick="window.location.reload()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2 rounded-lg text-sm transition-colors">
+                Retry Loading
+            </button>
+        </div>
+    </div>
+
+    <!-- Intro Overlay -->
+    <div id="introOverlay" class="fixed inset-0 bg-slate-900/90 z-[400] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity duration-500">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full text-center border-t-4 border-blue-500 transform transition-transform scale-100">
+            <div class="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <h1 id="introTitleText" class="text-2xl font-bold text-slate-800 mb-3"></h1>
+            <p id="introDescText" class="text-slate-600 mb-8 leading-relaxed whitespace-pre-line"></p>
+            <button id="startJourneyBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-transform hover:scale-105 w-full">Start Journey</button>
+        </div>
+    </div>
+
+    <!-- Timeout Overlay -->
+    <div id="timeoutOverlay" class="fixed inset-0 bg-red-900/95 hidden z-[10000] flex items-center justify-center p-4 transition-opacity duration-500 opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-t-4 border-red-500">
+            <div class="bg-red-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">⏳</div>
+            <h2 class="text-3xl font-bold text-slate-800 mb-3">Time's Up!</h2>
+            <p class="text-slate-600 mb-6 leading-relaxed">The timer has run out. Here is your exploration report:</p>
+            <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-200 text-left">
+                <p class="font-bold mb-2 text-slate-700 text-sm uppercase tracking-wider">Fully Explored Scenes</p>
+                <ul id="timeoutReport" class="text-sm text-slate-600 space-y-1"></ul>
+            </div>
+            <button onclick="location.reload()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg w-full">Restart Journey</button>
+        </div>
+    </div>
+
+    <!-- Journey Complete Overlay -->
+    <div id="completeOverlay" class="fixed inset-0 bg-emerald-900/95 hidden z-[10000] flex items-center justify-center p-4 transition-opacity duration-500 opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-t-4 border-emerald-500">
+            <div class="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">🏆</div>
+            <h2 class="text-3xl font-bold text-slate-800 mb-3">Journey Complete!</h2>
+            <p id="completionTimeText" class="text-slate-600 mb-8 font-medium text-lg"></p>
+            <div class="bg-amber-50 rounded-xl p-4 mb-6 border border-amber-200 text-amber-800">
+                <p class="font-bold mb-1">🗺️ Fast Travel Unlocked!</p>
+                <p class="text-sm">You can now use the Map to instantly travel to any location, and all hidden clues are now fully visible.</p>
+            </div>
+            <button onclick="document.getElementById('completeOverlay').classList.add('hidden'); openMap();" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg w-full">Open Map</button>
+        </div>
+    </div>
+
+    <div id="fadeOverlay" class="fixed inset-0 bg-slate-950 z-[9999] opacity-0 pointer-events-none transition-opacity duration-500"></div>
+
+    <div id="unlockToast" class="fixed top-24 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-3 rounded-full font-bold shadow-xl flex items-center gap-2 transition-all duration-500 opacity-0 pointer-events-none z-[150] transform -translate-y-4">
+        <span>✨ New Site Unlocked in Menu!</span>
+    </div>
+
+    <div id="transitContainer" class="fixed bottom-10 transit-btn hidden z-50">
+        <button id="transitTrigger" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-full font-bold shadow-2xl border-4 border-white flex items-center gap-2 transition-all hover:scale-105 active:scale-95">
+            <span>Transit Challenge</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+        </button>
+    </div>
+
+    <div id="menu" class="flex flex-col items-end">
+        <div id="menuPanel" class="hidden bg-white p-4 rounded-lg mb-4 shadow-2xl w-64 origin-bottom-right">
+            <h3 class="font-bold border-b mb-2 pb-1">Sites</h3>
+            <div id="sceneLinks" class="space-y-1 mb-3"></div>
+
+            <!-- Map Unlock Section -->
+            <div class="pt-3 border-t border-slate-200 mt-3 mb-3">
+                <button id="openMapMenuBtn" class="w-full text-left p-2 rounded bg-slate-100 text-slate-400 font-bold cursor-not-allowed transition-colors" onclick="document.getElementById('mapLockedNotice').classList.remove('hidden'); setTimeout(function(){ document.getElementById('mapLockedNotice').classList.add('hidden'); }, 3000);">
+                    🔒 Fast Travel Map
+                </button>
+                <p id="mapLockedNotice" class="text-xs text-amber-600 mt-1 hidden">Map is locked. Discover all hotspots to unlock Fast Travel!</p>
+            </div>
+
+            <div class="pt-3 border-t border-slate-200 flex items-center justify-between">
+                <span class="text-sm font-bold text-slate-700">Momentum Pan</span>
+                <input type="checkbox" id="expMomentumToggle" checked class="w-4 h-4 accent-indigo-600 cursor-pointer">
+            </div>
+            <div class="pt-2 flex items-center justify-between">
+                <span class="text-sm font-bold text-slate-700">Background Audio</span>
+                <input type="checkbox" id="expAudioToggle" checked class="w-4 h-4 accent-indigo-600 cursor-pointer">
+            </div>
+        </div>
+        <button id="menuBtn" class="bg-indigo-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:bg-indigo-700 hover:-translate-y-1 active:translate-y-0 active:scale-90">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+    </div>
+
+    <!-- Diagnostic Visual Map Modal (Exported App) -->
+    <div id="mapModal" class="fixed inset-0 bg-slate-900/95 hidden z-[500] flex flex-col p-6 transition-opacity duration-300 opacity-0">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-cyan-400"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+                Fast Travel Map
+            </h2>
+            <button onclick="closeMap()" class="text-slate-300 hover:text-white font-bold text-xl">✕ Close</button>
+        </div>
+        <div class="flex-grow w-full relative bg-slate-800 rounded-xl overflow-auto border border-slate-700 p-8 flex flex-wrap gap-12 items-center justify-center content-center" id="mapNodesContainer">
+            <svg id="mapLines" class="absolute inset-0 w-full h-full pointer-events-none">
+                <defs>
+                    <marker id="arrow-blue" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6" />
+                    </marker>
+                    <marker id="arrow-purple" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#9333ea" />
+                    </marker>
+                </defs>
+            </svg>
+        </div>
+        <div class="mt-4 flex gap-8 text-sm text-slate-300 font-medium justify-center">
+            <div class="flex items-center gap-2"><div class="w-8 h-1.5 bg-blue-500 rounded"></div> Portal Connection</div>
+            <div class="flex items-center gap-2"><div class="w-8 h-1.5 border-t-4 border-dashed border-purple-500"></div> Transit Challenge</div>
+        </div>
+    </div>
+
+    <!-- Exported Pop-up -->
+    <div id="popup" class="absolute -translate-x-1/2 bg-white p-6 rounded-xl shadow-2xl hidden w-[90vw] max-w-lg z-[200]">
+        <button onclick="closeP()" class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 text-xl font-bold z-10">✕</button>
+        <h2 id="pTitle" class="font-bold text-2xl mb-3"></h2>
+        
+        <!-- Interactive Lightbox Image Container -->
+        <div id="pImgContainer" class="relative hidden mb-4 group cursor-zoom-in">
+            <img id="pImg" class="w-full h-auto max-h-48 object-cover rounded-md shadow-sm">
+            <div class="absolute bottom-2 right-2 bg-slate-900/80 text-white text-xs px-2 py-1 rounded backdrop-blur opacity-80 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-none">🔍 Click to enlarge</div>
+        </div>
+        
+        <iframe id="pVid" class="w-full aspect-video hidden mb-4 rounded-md shadow-sm" frameborder="0" allowfullscreen></iframe>
+        <p id="pDesc" class="text-slate-600 text-base leading-relaxed mb-5"></p>
+        <button id="pTransitBtn" class="w-full bg-purple-600 text-white py-3 rounded-lg text-base font-bold mb-2 hidden shadow-sm">Travel Here</button>
+    </div>
+
+    <!-- Lightbox Overlay (Exported) -->
+    <div id="lbOverlay" class="fixed inset-0 bg-black/90 z-[999999] flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 cursor-zoom-out" onclick="this.classList.remove('opacity-100', 'pointer-events-auto'); this.classList.add('opacity-0', 'pointer-events-none');">
+        <img id="lbImg" class="max-w-[95vw] max-h-[95vh] object-contain rounded-lg shadow-2xl">
+        <div class="absolute top-6 right-6 text-white/50 hover:text-white font-bold text-xl transition-colors">✕ Close</div>
+    </div>
+
+    <div id="quiz" class="fixed inset-0 bg-slate-900/90 hidden z-[300] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full border-t-4 border-purple-500">
+            <h3 class="text-xl font-bold mb-4">Challenge</h3>
+            <p id="qText" class="mb-4"></p>
+            <input type="text" id="qAns" class="w-full border p-3 rounded-md mb-2">
+            <div class="flex justify-end gap-3 mt-4"><button onclick="document.getElementById('quiz').classList.add('hidden')" class="text-slate-500">Cancel</button><button id="qSub" class="bg-purple-600 text-white px-6 py-2 rounded-md font-bold">Submit</button></div>
+        </div>
+    </div>
+
+    <script>
+        const scenes = [{"id":"s1786937360004","title":"Scene 1","imageSrc":"https://firebasestorage.googleapis.com/v0/b/virtuallearningjourney.firebasestorage.app/o/scenes%2F1786937365353_185162.jpg?alt=media&token=6e0c4201-4a49-4886-a7c6-1dfb33f225e8","audioSrc":null,"hotspots":[{"title":"Chair","desc":"","videoUrl":"","imageUrl":null,"targetSceneId":null,"isHidden":false,"hiddenSize":3,"pos":{"x":0.36446983516443804,"y":-0.3842480633537698,"z":0.848242397586966}},{"title":"Uniform","desc":"","videoUrl":"","imageUrl":null,"targetSceneId":null,"isHidden":false,"hiddenSize":3,"pos":{"x":0.9896822137554401,"y":-0.08335949181263128,"z":0.11653459100572351}},{"title":"Bin","desc":"","videoUrl":"","imageUrl":null,"targetSceneId":null,"isHidden":false,"hiddenSize":3,"pos":{"x":0.9985678894472064,"y":-0.051915427442195725,"z":-0.012921244461973583}},{"title":"Board","desc":"","videoUrl":"","imageUrl":null,"targetSceneId":null,"isHidden":false,"hiddenSize":3,"pos":{"x":-0.9961082311053017,"y":0.022711613280656573,"z":-0.08516204874506589}},{"title":"Door","desc":"","videoUrl":"","imageUrl":null,"targetSceneId":null,"isHidden":false,"hiddenSize":3,"pos":{"x":-0.768933437137024,"y":-0.14814839264691543,"z":-0.6219271846516905}},{"title":"Door","desc":"","videoUrl":"","imageUrl":null,"targetSceneId":null,"isHidden":false,"hiddenSize":3,"pos":{"x":-0.9774703752661588,"y":-0.07240576132570321,"z":0.19826515378119267}},{"title":"Railing","desc":"","videoUrl":"","imageUrl":null,"targetSceneId":null,"isHidden":false,"hiddenSize":3,"pos":{"x":-0.5865372145989926,"y":0.09123852883457209,"z":0.804766815137502}},{"title":"Table","desc":"","videoUrl":"","imageUrl":null,"targetSceneId":null,"isHidden":false,"hiddenSize":3,"pos":{"x":-0.9421295742043886,"y":-0.30225656178521526,"z":0.14502701909381574}}],"transitConfig":{"question":"Other than blue, what is another colour for our school?","answer":"White"},"isHidden":false},{"id":"s1786937428301","title":"Scene 2","imageSrc":"https://firebasestorage.googleapis.com/v0/b/virtuallearningjourney.firebasestorage.app/o/scenes%2F1786937434487_ChatGPT%20Image%20Aug%2017%2C%202026%2C%2011_25_50%20AM.png?alt=media&token=35d250c8-5328-40de-b1ea-60089e78ef45","audioSrc":null,"hotspots":[{"title":"Congrats in escaping STC","desc":"","videoUrl":"","imageUrl":null,"targetSceneId":null,"isHidden":false,"hiddenSize":3,"pos":{"x":0.9358390332992524,"y":-0.31063938530923857,"z":-0.1664586316422756}}],"transitConfig":null,"isHidden":false}];
+        const tourIntro = {"title":"Welcome to the Journey","desc":"Explore the environment and click on the information points to learn more!"};
+        const tourTimer = 0;
+
+        let cur = 0, lon = 0, lat = 0;
+        let unlocked = new Set([0]);
+
+        function unlockScene(i) {
+            if (i === -1 || i === undefined || i < 0 || i >= scenes.length) return false;
+            if (unlocked.has(i)) return false;
+            unlocked.add(i);
+            return true;
+        }
+        function isUnlocked(i) { return tourCompleted || unlocked.has(i); }
+
+        let scene, camera, renderer, sphere;
+        let vis = {};
+        let activeP = null;
+        let tourCompleted = false;
+        let bgAudio = new Audio();
+        bgAudio.loop = true;
+        let initPinchDist = null, initFov = null;
+
+        let startTime = 0;
+        let timerInterval = null;
+        let totalClicks = 0;
+        let isDragging = false;
+
+        let isD = false, mx, my, mL, mLat;
+        let momentum = true, lonVel = 0, latVel = 0, prevLon = 0, prevLat = 0;
+
+        function getNextVis(startIdx) {
+            for(let i = startIdx + 1; i < scenes.length; i++) {
+                if(!scenes[i].isHidden) return i;
+            }
+            return -1;
+        }
+
+        function refreshProgressGates() {
+            const s = scenes[cur];
+            const tc = document.getElementById('transitContainer');
+            if (!s) { tc.classList.add('hidden'); return; }
+
+            const found = vis[cur] ? vis[cur].size : 0;
+            const done = s.hotspots.length === 0 || found === s.hotspots.length;
+            if (!done) { tc.classList.add('hidden'); return; }
+
+            const nxt = getNextVis(cur);
+            if (s.transitConfig) {
+                if (!tourCompleted && nxt !== -1 && !unlocked.has(nxt)) tc.classList.remove('hidden');
+                else tc.classList.add('hidden');
+            } else {
+                tc.classList.add('hidden');
+                if (unlockScene(nxt)) { renderMenu(); showUnlockToast(); }
+            }
+        }
+
+        function getPtr(e) {
+            if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        function getReachableIndices() {
+            const reachable = new Set();
+            if (scenes.length === 0) return reachable;
+
+            const stack = [0];
+            while (stack.length > 0) {
+                const i = stack.pop();
+                if (i === -1 || reachable.has(i)) continue;
+                reachable.add(i);
+
+                const s = scenes[i];
+                if (!s) continue;
+
+                const nxt = getNextVis(i);
+                if (nxt !== -1 && !reachable.has(nxt)) stack.push(nxt);
+
+                s.hotspots.forEach(h => {
+                    if (!h.targetSceneId) return;
+                    const t = scenes.findIndex(sc => sc.id === h.targetSceneId);
+                    if (t !== -1 && !reachable.has(t)) stack.push(t);
+                });
+            }
+            return reachable;
+        }
+
+        function checkCompletion() {
+            if (tourCompleted || scenes.length === 0) return;
+
+            let totalH = 0, totalV = 0;
+            getReachableIndices().forEach(idx => {
+                if (!scenes[idx]) return;
+                totalH += scenes[idx].hotspots.length;
+                if (vis[idx]) totalV += vis[idx].size;
+            });
+
+            if (totalH > 0 && totalH === totalV) {
+                tourCompleted = true;
+                if(timerInterval) clearInterval(timerInterval);
+
+                let elapsed = Date.now() - startTime;
+                let totalSecs = Math.floor(elapsed / 1000);
+                let mins = Math.floor(totalSecs / 60);
+                let secs = totalSecs % 60;
+
+                if (tourTimer === 0) {
+                    document.getElementById('timeText').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+                }
+
+                let acc = totalClicks > 0 ? Math.round((totalH / totalClicks) * 100) : 100;
+                if (acc > 100) acc = 100;
+                document.getElementById('accuracyText').textContent = acc + '%';
+                document.getElementById('accuracyContainer').classList.remove('hidden');
+
+                const td = document.getElementById('timerDisplay');
+                td.classList.remove('hidden');
+                td.classList.add('bg-emerald-600', 'border-emerald-500', 'border-2');
+                td.classList.remove('bg-slate-900/80');
+
+                scenes[cur].hotspots.forEach((h, i) => {
+                    const div = document.getElementById('h'+i);
+                    if (div) {
+                        div.classList.remove('hidden-hotspot');
+                        div.innerHTML = 'i';
+                        div.style.width = '44px';
+                        div.style.height = '44px';
+                    }
+                });
+
+                document.getElementById('progressHud').classList.add('hidden');
+                document.getElementById('finishJourneyBtn').classList.remove('hidden');
+            }
+        }
+
+        document.getElementById('finishJourneyBtn').onclick = () => {
+            document.getElementById('finishJourneyBtn').classList.add('hidden');
+
+            let elapsed = Date.now() - startTime;
+            let totalSecs = Math.floor(elapsed / 1000);
+            let mins = Math.floor(totalSecs / 60);
+            let secs = totalSecs % 60;
+
+            let timeString = tourTimer > 0
+                ? `You finished with ${document.getElementById('timeText').textContent} remaining!`
+                : `You completed the journey in ${mins}m ${secs}s!`;
+
+            document.getElementById('completionTimeText').textContent = timeString;
+
+            const btn = document.getElementById('openMapMenuBtn');
+            if (btn) {
+                btn.innerHTML = '🗺️ Fast Travel Map';
+                btn.className = 'w-full text-left p-2 rounded bg-amber-100 font-bold text-amber-800 hover:bg-amber-200 mt-2 transition-colors';
+                btn.onclick = () => {
+                    const pnl = document.getElementById('menuPanel');
+                    if(pnl) pnl.classList.add('hidden');
+                    openMap();
+                };
+            }
+
+            scenes.forEach((s, i) => unlockScene(i));
+            renderMenu();
+
+            const over = document.getElementById('completeOverlay');
+            if (over) {
+                over.classList.remove('hidden');
+                setTimeout(() => over.classList.remove('opacity-0'), 50);
+            }
+        };
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            startTime = Date.now();
+            if (tourTimer > 0) {
+                document.getElementById('timerDisplay').classList.remove('hidden');
+                timerInterval = setInterval(() => {
+                    let elapsed = Date.now() - startTime;
+                    let remaining = (tourTimer * 60000) - elapsed;
+                    if (remaining <= 0) {
+                        clearInterval(timerInterval);
+                        remaining = 0;
+                        handleTimeUp();
+                    }
+
+                    let totalSecs = Math.floor(remaining / 1000);
+                    let mins = Math.floor(totalSecs / 60);
+                    let secs = totalSecs % 60;
+                    document.getElementById('timeText').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+                }, 1000);
+            }
+        }
+
+        function handleTimeUp() {
+            document.getElementById('fadeOverlay').classList.remove('opacity-0', 'pointer-events-none');
+            document.getElementById('fadeOverlay').classList.add('opacity-100', 'pointer-events-auto');
+
+            let unlockedHtml = '';
+            scenes.forEach((s, i) => {
+                if(vis[i] && s.hotspots.length > 0 && vis[i].size === s.hotspots.length) {
+                    unlockedHtml += `<li>✅ ${s.title}</li>`;
+                }
+            });
+
+            document.getElementById('timeoutReport').innerHTML = unlockedHtml || `<li>No scenes fully explored.</li>`;
+
+            const to = document.getElementById('timeoutOverlay');
+            to.classList.remove('hidden');
+            setTimeout(() => to.classList.remove('opacity-0'), 50);
+        }
+
+        function showUnlockToast() {
+            const t = document.getElementById('unlockToast');
+            if(t) {
+                t.classList.remove('opacity-0', '-translate-y-4');
+                setTimeout(() => t.classList.add('opacity-0', '-translate-y-4'), 3000);
+            }
+        }
+
+        function updateHud() {
+            const h = document.getElementById('progressHud');
+            const s = scenes[cur];
+            if (tourCompleted || !s || !s.hotspots || s.hotspots.length === 0) { h.classList.add('hidden'); return; }
+            h.classList.remove('hidden', 'hud-complete', 'bg-emerald-600', 'border-emerald-500');
+            h.classList.add('bg-slate-900/80', 'border-slate-700');
+
+            const discovered = vis[cur] ? vis[cur].size : 0;
+            document.getElementById('pCount').textContent = discovered;
+            document.getElementById('pTotal').textContent = s.hotspots.length;
+
+            if (discovered === s.hotspots.length) {
+                h.classList.remove('bg-slate-900/80', 'border-slate-700');
+                h.classList.add('bg-emerald-600', 'border-emerald-500', 'hud-complete');
+                document.getElementById('pCount').className = 'text-white';
+            } else {
+                document.getElementById('pCount').className = 'text-indigo-300';
+            }
+        }
+
+        function showError(msg) {
+            document.getElementById('loadingContent').classList.add('hidden');
+            const eBox = document.getElementById('errorBox');
+            eBox.querySelector('h3').textContent = "Error Loading Tour";
+            eBox.querySelector('p').textContent = msg;
+            eBox.querySelector('.font-mono').classList.add('hidden');
+            eBox.classList.remove('hidden');
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            const c = document.getElementById('container');
+            c.appendChild(renderer.domElement);
+
+            const geo = new THREE.SphereGeometry(500, 60, 40); geo.scale(-1, 1, 1);
+            sphere = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+            scene.add(sphere);
+
+            window.onresize = () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
+
+            const start = (e) => {
+                isD = true;
+                isDragging = false;
+                const p = getPtr(e); mx = p.x; my = p.y; mL = lon; mLat = lat;
+            };
+            const move = (e) => {
+                if (e.touches && e.touches.length === 2) {
+                    if (e.cancelable) e.preventDefault();
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (initPinchDist === null) {
+                        initPinchDist = dist; initFov = camera.fov;
+                    } else {
+                        camera.fov = Math.max(20, Math.min(100, initFov * (initPinchDist / dist)));
+                        camera.updateProjectionMatrix();
+                    }
+                    return;
+                }
+                if(!isD) return;
+                if(e.cancelable) e.preventDefault();
+                const p = getPtr(e);
+                lon = (mx - p.x) * 0.1 + mL; lat = (p.y - my) * 0.1 + mLat;
+                if (Math.abs(p.x - mx) > 10 || Math.abs(p.y - my) > 10) isDragging = true;
+            };
+            const up = () => {
+                if (isD && !isDragging && !tourCompleted) {
+                    if (document.getElementById('introOverlay').classList.contains('hidden')) {
+                        totalClicks++;
+                    }
+                }
+                isD = false;
+                initPinchDist = null;
+            };
+
+            c.addEventListener('mousedown', start);
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+            c.addEventListener('touchstart', start, {passive:false});
+            document.addEventListener('touchmove', move, {passive:false});
+            document.addEventListener('touchend', up);
+
+            c.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                camera.fov = Math.max(20, Math.min(100, camera.fov + e.deltaY * 0.05));
+                camera.updateProjectionMatrix();
+            }, {passive: false});
+
+            document.getElementById('zIn').onclick = () => { camera.fov = Math.max(20, camera.fov - 10); camera.updateProjectionMatrix(); };
+            document.getElementById('zOut').onclick = () => { camera.fov = Math.min(100, camera.fov + 10); camera.updateProjectionMatrix(); };
+
+            if (tourIntro && tourIntro.title) {
+                document.getElementById('introTitleText').textContent = tourIntro.title;
+                document.getElementById('introDescText').textContent = tourIntro.desc;
+                document.getElementById('startJourneyBtn').onclick = () => {
+                    const overlay = document.getElementById('introOverlay');
+                    overlay.classList.add('opacity-0');
+                    setTimeout(() => overlay.classList.add('hidden'), 500);
+
+                    startTimer();
+
+                    if (bgAudio.src && bgAudio.src !== window.location.href) {
+                        bgAudio.play().catch(e => console.log("Autoplay blocked:", e));
+                    }
+                };
+            } else {
+                document.getElementById('introOverlay').classList.add('hidden');
+                startTimer();
+            }
+
+            load(0); animate();
+        }
+
+        function load(idx) {
+            const s = scenes[idx];
+            if (!s) {
+                showError("No valid scene found in this tour file.");
+                return;
+            }
+
+            cur = idx;
+            bgAudio.pause();
+            if (s.audioSrc) {
+                bgAudio.src = s.audioSrc;
+                if (document.getElementById('introOverlay').classList.contains('hidden')) {
+                    bgAudio.play().catch(e => console.log("Autoplay blocked:", e));
+                }
+            } else {
+                bgAudio.src = '';
+            }
+
+            if (!vis[cur]) vis[cur] = new Set();
+
+            document.getElementById('loadingOverlay').classList.remove('opacity-0', 'pointer-events-none');
+            document.getElementById('loadingOverlay').classList.add('opacity-100', 'pointer-events-auto');
+            document.getElementById('loadingContent').classList.remove('hidden');
+            document.getElementById('errorBox').classList.add('hidden');
+
+            const loadTextureWithFallback = (url, isFallback = false) => {
+                const loader = new THREE.TextureLoader();
+                if (!url.startsWith('blob:') && !url.startsWith('data:')) loader.setCrossOrigin('anonymous');
+
+                loader.load(
+                    url,
+                    (t) => {
+                        sphere.material.map = t;
+                        sphere.material.needsUpdate = true;
+                        setTimeout(() => {
+                            document.getElementById('loadingOverlay').classList.remove('opacity-100', 'pointer-events-auto');
+                            document.getElementById('loadingOverlay').classList.add('opacity-0', 'pointer-events-none');
+                            const fade = document.getElementById('fadeOverlay');
+                            if (fade && fade.classList.contains('opacity-100')) {
+                                fade.classList.remove('opacity-100', 'pointer-events-auto');
+                                fade.classList.add('opacity-0', 'pointer-events-none');
+                            }
+                        }, 250);
+                    },
+                    undefined,
+                    (err) => {
+                        if (!isFallback && !url.startsWith('blob:') && !url.startsWith('data:')) {
+                            const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+                            loadTextureWithFallback(proxyUrl, true);
+                        } else {
+                            document.getElementById('loadingContent').classList.add('hidden');
+                            document.getElementById('errorBox').classList.remove('hidden');
+                        }
+                    }
+                );
+            };
+
+            loadTextureWithFallback(s.imageSrc);
+
+            document.getElementById('overlay').innerHTML = ''; document.getElementById('transitContainer').classList.add('hidden'); closeP();
+            s.hotspots.forEach((h, i) => {
+                const div = document.createElement('div');
+                const isHiddenNow = h.isHidden && !tourCompleted;
+                div.className = 'hotspot' + (isHiddenNow ? ' hidden-hotspot' : '');
+                div.id = 'h'+i;
+                div.innerHTML = isHiddenNow ? '?' : 'i';
+                div.style.pointerEvents = 'auto';
+
+                let sizeMult = h.hiddenSize || 1;
+                let dim = 44;
+                if (isHiddenNow && !vis[cur].has(i)) {
+                    dim = 44 * sizeMult;
+                }
+                div.style.width = dim + 'px';
+                div.style.height = dim + 'px';
+
+                if(vis[cur].has(i)) {
+                    div.classList.add('visited');
+                    div.innerHTML = 'i';
+                }
+
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    if (!tourCompleted) totalClicks++; 
+                    div.classList.add('visited');
+                    div.innerHTML = 'i';
+                    div.style.width = '44px';
+                    div.style.height = '44px';
+                    vis[cur].add(i);
+                    updateHud();
+                    showP(h, i);
+                    refreshProgressGates(); 
+                    checkCompletion();
+                };
+                document.getElementById('overlay').appendChild(div);
+            });
+
+            renderMenu();
+            updateHud();
+            refreshProgressGates(); 
+        }
+
+        function showP(h, idx) {
+            activeP = idx;
+            document.getElementById('pTitle').textContent = h.title || ''; document.getElementById('pDesc').textContent = h.desc || '';
+            
+            const vid = document.getElementById('pVid'); 
+            const yt = (h.videoUrl || '').match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=))([\w-]{11})/);
+            if(yt) { vid.src = 'https://www.youtube.com/embed/'+yt[1]; vid.classList.remove('hidden'); } else { vid.src = ''; vid.classList.add('hidden'); }
+
+            const imgContainer = document.getElementById('pImgContainer');
+            const img = document.getElementById('pImg');
+            if (h.imageUrl) { 
+                img.src = h.imageUrl; 
+                imgContainer.classList.remove('hidden'); 
+                imgContainer.onclick = () => {
+                    const lb = document.getElementById('lbOverlay');
+                    document.getElementById('lbImg').src = h.imageUrl;
+                    lb.classList.remove('opacity-0', 'pointer-events-none');
+                    lb.classList.add('opacity-100', 'pointer-events-auto');
+                };
+            } else { 
+                img.src = ''; 
+                imgContainer.classList.add('hidden'); 
+                imgContainer.onclick = null;
+            }
+
+            const tBtn = document.getElementById('pTransitBtn');
+            if (h.targetSceneId) {
+                const targetIdx = scenes.findIndex(s => s.id === h.targetSceneId);
+                if (targetIdx !== -1) {
+                    tBtn.textContent = 'Travel to: ' + scenes[targetIdx].title;
+                    tBtn.classList.remove('hidden');
+                    tBtn.onclick = () => {
+                        closeP();
+                        const fade = document.getElementById('fadeOverlay');
+                        fade.classList.remove('opacity-0', 'pointer-events-none');
+                        fade.classList.add('opacity-100', 'pointer-events-auto');
+
+                        const origFov = camera.fov;
+                        let zFrame;
+                        const zStep = () => {
+                            camera.fov -= (camera.fov - 20) * 0.1;
+                            camera.updateProjectionMatrix();
+                            zFrame = requestAnimationFrame(zStep);
+                        };
+                        zFrame = requestAnimationFrame(zStep);
+
+                        setTimeout(() => {
+                            cancelAnimationFrame(zFrame);
+                            camera.fov = origFov; camera.updateProjectionMatrix();
+                            unlockScene(targetIdx); 
+                            load(targetIdx);
+                        }, 500);
+                    };
+                } else tBtn.classList.add('hidden');
+            } else tBtn.classList.add('hidden');
+
+            document.getElementById('popup').classList.remove('hidden');
+        }
+
+        function closeP() {
+            activeP = null;
+            const p = document.getElementById('popup');
+            p.style.visibility = '';
+            p.classList.add('hidden');
+            
+            setTimeout(() => { 
+                document.getElementById('pVid').src = ''; 
+                document.getElementById('pImg').src = '';
+            }, 200);
+            
+            const lb = document.getElementById('lbOverlay');
+            if(lb) {
+                lb.classList.remove('opacity-100', 'pointer-events-auto');
+                lb.classList.add('opacity-0', 'pointer-events-none');
+            }
+        }
+
+        function drawSVGLine(svg, x1, y1, x2, y2, color, dashed) {
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const cx = x1 + dx / 2 - dy * 0.15;
+            const cy = y1 + dy / 2 + dx * 0.15;
+            path.setAttribute('d', 'M ' + x1 + ' ' + y1 + ' Q ' + cx + ' ' + cy + ' ' + x2 + ' ' + y2);
+            path.setAttribute('stroke', color);
+            path.setAttribute('stroke-width', '4');
+            path.setAttribute('fill', 'none');
+            if (dashed) path.setAttribute('stroke-dasharray', '8,8');
+            const cName = color === '#3b82f6' ? 'blue' : 'purple';
+            path.setAttribute('marker-end', 'url(#arrow-' + cName + ')');
+            svg.appendChild(path);
+        }
+
+        function openMap() {
+            const m = document.getElementById('mapModal');
+            m.classList.remove('hidden');
+            setTimeout(() => m.classList.remove('opacity-0'), 10);
+
+            const cont = document.getElementById('mapNodesContainer');
+            const svg = document.getElementById('mapLines');
+            Array.from(svg.querySelectorAll('path')).forEach(p => p.remove());
+            Array.from(cont.children).forEach(c => { if(c.tagName !== 'svg' && c.tagName !== 'SVG') c.remove(); });
+
+            const els = {};
+            scenes.forEach((s, i) => {
+                const b = document.createElement('button');
+                b.className = 'relative z-10 px-5 py-3 rounded-xl font-bold shadow-xl border-2 transition-transform hover:scale-105 ' +
+                              (i === cur ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-white text-slate-800 border-slate-200');
+                b.textContent = s.title + (s.isHidden ? ' 🤫' : '');
+                b.onclick = () => { closeMap(); unlockScene(i); load(i); }; 
+                cont.appendChild(b);
+                els[s.id] = b;
+            });
+
+            setTimeout(() => {
+                const sR = svg.getBoundingClientRect();
+                scenes.forEach((s, i) => {
+                    const f = els[s.id];
+                    if(!f) return;
+                    const fR = f.getBoundingClientRect();
+                    const fx = fR.left + fR.width/2 - sR.left;
+                    const fy = fR.top + fR.height/2 - sR.top;
+
+                    s.hotspots.forEach(h => {
+                        if(h.targetSceneId && els[h.targetSceneId]) {
+                            const t = els[h.targetSceneId];
+                            const tR = t.getBoundingClientRect();
+                            const tx = tR.left + tR.width/2 - sR.left;
+                            const ty = tR.top + tR.height/2 - sR.top;
+                            drawSVGLine(svg, fx, fy, tx, ty, '#3b82f6', false);
+                        }
+                    });
+
+                    if(s.transitConfig && i < scenes.length - 1) {
+                        const t = els[scenes[i+1].id];
+                        if(t) {
+                            const tR = t.getBoundingClientRect();
+                            const tx = tR.left + tR.width/2 - sR.left;
+                            const ty = tR.top + tR.height/2 - sR.top;
+                            drawSVGLine(svg, fx, fy, tx, ty, '#9333ea', true);
+                        }
+                    }
+                });
+            }, 50);
+        }
+
+        function closeMap() {
+            const m = document.getElementById('mapModal');
+            m.classList.add('opacity-0');
+            setTimeout(() => m.classList.add('hidden'), 300);
+        }
+
+        function renderMenu() {
+            const links = document.getElementById('sceneLinks'); links.innerHTML = '';
+            scenes.forEach((s, i) => {
+                if (s.isHidden && !tourCompleted) return;
+                const b = document.createElement('button');
+                b.className = 'w-full text-left p-2 rounded ' + (i === cur ? 'bg-indigo-50 font-bold' : (isUnlocked(i) ? 'hover:bg-slate-100' : 'opacity-50'));
+                b.textContent = (i+1)+'. '+s.title + (s.isHidden ? ' 🤫' : '');
+                if (isUnlocked(i)) b.onclick = () => { load(i); document.getElementById('menuPanel').classList.add('hidden'); };
+                links.appendChild(b);
+            });
+        }
+
+        document.getElementById('menuBtn').onclick = () => document.getElementById('menuPanel').classList.toggle('hidden');
+        document.getElementById('expMomentumToggle').onchange = (e) => momentum = e.target.checked;
+        document.getElementById('expAudioToggle').onchange = (e) => bgAudio.muted = !e.target.checked;
+
+        document.getElementById('transitTrigger').onclick = () => {
+            const s = scenes[cur];
+            if (s.transitConfig) {
+                document.getElementById('qText').textContent = s.transitConfig.question;
+                document.getElementById('qAns').value = '';
+                const err = document.getElementById('qError');
+                if (err) err.textContent = '';
+                document.getElementById('quiz').classList.remove('hidden');
+            }
+        };
+
+        document.getElementById('qSub').onclick = () => {
+            const s = scenes[cur];
+            if (document.getElementById('qAns').value.trim().toLowerCase() === s.transitConfig.answer.toLowerCase()) {
+                document.getElementById('quiz').classList.add('hidden');
+                document.getElementById('transitContainer').classList.add('hidden');
+                const nxt = getNextVis(cur);
+                if (nxt !== -1) {
+                    unlockScene(nxt); 
+                    load(nxt);
+                }
+                checkCompletion();
+            } else {
+                let errEl = document.getElementById('qError');
+                if (!errEl) {
+                    errEl = document.createElement('p');
+                    errEl.id = 'qError';
+                    errEl.className = 'text-red-500 text-sm mt-1';
+                    document.getElementById('qAns').after(errEl);
+                }
+                errEl.textContent = 'Incorrect answer. Please try again!';
+            }
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (isD) { lonVel = lon - prevLon; latVel = lat - prevLat; } else if (momentum) { lon += lonVel; lat += latVel; lonVel *= 0.92; latVel *= 0.92; }
+            lat = Math.max(-85, Math.min(85, lat));
+            if (lat === 85 || lat === -85) latVel = 0;
+            prevLon = lon; prevLat = lat;
+
+            const phi = THREE.MathUtils.degToRad(90 - lat), theta = THREE.MathUtils.degToRad(lon);
+            camera.lookAt(new THREE.Vector3(500 * Math.sin(phi) * Math.cos(theta), 500 * Math.cos(phi), 500 * Math.sin(phi) * Math.sin(theta)));
+            renderer.render(scene, camera);
+
+            const s = scenes[cur];
+            if (s && s.hotspots) {
+                s.hotspots.forEach((h, i) => {
+                    const div = document.getElementById('h'+i);
+                    if (!div) return;
+                    const v = new THREE.Vector3(h.pos.x, h.pos.y, h.pos.z).project(camera);
+                    if(v.z < 1) {
+                        div.style.left = (v.x * 0.5 + 0.5) * window.innerWidth + 'px';
+                        div.style.top = (v.y * -0.5 + 0.5) * window.innerHeight + 'px';
+                        div.style.display = 'flex';
+                    } else div.style.display = 'none';
+                });
+            }
+
+            if (activeP !== null) {
+                const p = document.getElementById('popup');
+                const m = document.getElementById('h'+activeP);
+                if (m && m.style.display !== 'none') {
+                    p.style.left = m.style.left;
+                    p.style.top = (parseFloat(m.style.top) - p.offsetHeight - 15) + 'px';
+                    p.style.visibility = 'visible';
+                } else {
+                    p.style.visibility = 'hidden';
+                }
+            }
+        }
+        init();
+    </script>
+</body>
+</html>
