@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Virtual Learning Journey Builder</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body { margin: 0; overflow-x: hidden; }
@@ -17,7 +18,7 @@
         @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
         .hotspot-marker { animation: pulse-blue 2s infinite; transition: transform 0.2s, background-color 0.2s, opacity 0.2s, width 0.3s, height 0.3s; pointer-events: auto; }
         .hotspot-marker:hover { transform: scale(1.05); }
-        .visited { background-color: #10b981 !important; border-color: white !important; color: white !important; opacity: 1 !important; animation: none; }
+        .visited { background-color: #10b981 !important; border-color: white !important; color: white !important; animation: none; }
         .ghost-marker { opacity: 0.4 !important; }
         .ghost-marker:hover { opacity: 0.8 !important; }
         .hud-complete { background-color: #10b981 !important; border-color: #059669 !important; animation: pulse-green 2s infinite; }
@@ -235,7 +236,7 @@
         </div>
         <iframe id="popupVideo" class="w-full aspect-video hidden mb-4 rounded-md shadow-sm" frameborder="0" allowfullscreen></iframe>
         <p id="popupDesc" class="text-base text-slate-600 leading-relaxed mb-5"></p>
-        <button id="popupTransitBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg text-base font-bold mb-2 hidden transition-colors shadow-sm">Travel Here</button>
+        <button id="popupTransitBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg text-base font-bold mb-2 hidden shadow-sm">Travel Here</button>
     </div>
 
     <!-- Point Quiz Modal -->
@@ -565,6 +566,7 @@
         </div>
     </div>
 
+    <!-- FIREBASE AND APP LOGIC MODULE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
@@ -589,6 +591,7 @@
         let currentUser = null;
         let currentCredits = 0;
 
+        // --- State Management ---
         let scenes = [];
         let activeSceneId = null;
         let isEditMode = true;
@@ -710,6 +713,7 @@
             return { x: event.clientX, y: event.clientY };
         }
 
+        // --- Cloud Save Logic ---
         function autoSave() {
             if (!currentUser || !currentTourId) return;
             
@@ -927,6 +931,14 @@
         document.getElementById('backToDashboardBtn').onclick = () => {
             showView('dashboard');
         };
+
+        // --- Three.js Setup ---
+        let scene, camera, renderer, sphere;
+        let isUserInteracting = false, onMouseDownMouseX = 0, onMouseDownMouseY = 0, lon = 0, onMouseDownLon = 0, lat = 0, onMouseDownLat = 0, phi = 0, theta = 0;
+
+        let lonVelocity = 0, latVelocity = 0;
+        let prevLon = 0, prevLat = 0;
+        let isMomentumEnabled = true;
 
         function initThree() {
             const container = document.getElementById('viewerContainer');
@@ -1860,6 +1872,14 @@
                 setStatus("Failed to generate challenge. Try again.", "error");
             }
         };
+
+        // --- Three.js Setup ---
+        let scene, camera, renderer, sphere;
+        let isUserInteracting = false, onMouseDownMouseX = 0, onMouseDownMouseY = 0, lon = 0, onMouseDownLon = 0, lat = 0, onMouseDownLat = 0, phi = 0, theta = 0;
+
+        let lonVelocity = 0, latVelocity = 0;
+        let prevLon = 0, prevLat = 0;
+        let isMomentumEnabled = true;
 
         initThree();
         showView('login');
