@@ -1471,12 +1471,13 @@
                 marker.style.width = dim + 'px';
                 marker.style.height = dim + 'px';
 
-                marker.className = baseClass;
+              marker.className = baseClass;
                 marker.onclick = (e) => {
                     e.stopPropagation();
                     if (!isEditMode) {
+                        let currentIsVisited = visitedSet(activeSceneId).has(idx);
                         
-                        if (!isVisited && !builderTourCompleted) {
+                        if (!currentIsVisited && !builderTourCompleted) {
                             if (isQuiz) {
                                 activePointQuizIndex = idx;
                                 activePointQuizHs = hs;
