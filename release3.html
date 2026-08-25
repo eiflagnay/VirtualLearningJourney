@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Virtual Learning Journey Builder</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body { margin: 0; overflow-x: hidden; }
@@ -18,8 +19,6 @@
         .hotspot-marker { animation: pulse-blue 2s infinite; transition: transform 0.2s, background-color 0.2s, opacity 0.2s, width 0.3s, height 0.3s; pointer-events: auto; }
         .hotspot-marker:hover { transform: scale(1.05); }
         .visited { background-color: #10b981 !important; border-color: white !important; color: white !important; opacity: 1 !important; animation: none; }
-        .ghost-marker { opacity: 0.4 !important; }
-        .ghost-marker:hover { opacity: 0.8 !important; }
         .hud-complete { background-color: #10b981 !important; border-color: #059669 !important; animation: pulse-green 2s infinite; }
 
         #floatingMenu { position: fixed; bottom: 30px; right: 30px; z-index: 50; touch-action: none; }
@@ -561,7 +560,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, addDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAdPMFxcptu9QEng_poGGm9YteFUO8UYt4",
@@ -591,10 +590,6 @@
         let builderTourCompleted = false;
         let builderTotalClicks = 0;
         let builderIsDragging = false;
-
-        let currentTourId = null;
-        let currentTourTitle = "";
-        let saveTimeout = null;
 
         let currentBgAudio = new Audio();
         currentBgAudio.loop = true;
@@ -705,228 +700,6 @@
             return { x: event.clientX, y: event.clientY };
         }
 
-        // --- Cloud Save Logic ---
-        function autoSave() {
-            if (!currentUser || !currentTourId) return;
-            
-            const indicator = document.getElementById('saveIndicator');
-            indicator.classList.remove('hidden');
-            indicator.textContent = 'Saving...';
-            indicator.className = 'text-xs font-medium ml-3 text-amber-500';
-            
-            clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(async () => {
-                try {
-                    // Strip out local file URLs before saving to cloud
-                    const scenesToSave = scenes.map(s => {
-                        const { localImageSrc, localAudioSrc, ...rest } = s;
-                        return rest;
-                    });
-
-                    const tourRef = doc(db, 'users', currentUser.uid, 'tours', currentTourId);
-                    await setDoc(tourRef, {
-                        title: currentTourTitle,
-                        scenes: scenesToSave,
-                        tourIntro: tourIntro,
-                        tourTimer: tourTimer,
-                        updatedAt: new Date().toISOString()
-                    }, { merge: true });
-                    
-                    indicator.textContent = 'Saved to Cloud ☁️';
-                    indicator.className = 'text-xs font-medium ml-3 text-emerald-500 transition-colors duration-500';
-                    setTimeout(() => indicator.classList.add('text-slate-400'), 2000);
-                } catch(e) {
-                    console.error("Autosave error", e);
-                    indicator.textContent = 'Save Error!';
-                    indicator.className = 'text-xs font-bold ml-3 text-red-500';
-                }
-            }, 1000); // Wait 1 second after last change before saving
-        }
-
-        // --- View Management ---
-        function showView(viewName) {
-            const login = document.getElementById('loginOverlay');
-            const dashboard = document.getElementById('dashboardSection');
-            const workspace = document.getElementById('workspaceSection');
-            const upload = document.getElementById('uploadSection');
-            const welcome = document.getElementById('welcomeSection');
-            const floatMenu = document.getElementById('floatingMenu');
-            const toolbarControls = document.getElementById('builderToolbarControls');
-            const backBtn = document.getElementById('backToDashboardBtn');
-            const saveInd = document.getElementById('saveIndicator');
-            const titleHeader = document.getElementById('currentSceneTitleHeader');
-
-            login.classList.add('hidden', 'opacity-0', 'pointer-events-none');
-            dashboard.classList.add('hidden');
-            workspace.classList.add('hidden');
-            upload.classList.add('hidden');
-            welcome.classList.add('hidden');
-            floatMenu.classList.add('hidden');
-            toolbarControls.classList.add('hidden');
-            toolbarControls.classList.remove('flex');
-            backBtn.classList.add('hidden');
-            saveInd.classList.add('hidden');
-
-            if (viewName === 'login') {
-                login.classList.remove('hidden', 'opacity-0', 'pointer-events-none');
-                titleHeader.textContent = "Virtual Tour Builder";
-            } 
-            else if (viewName === 'dashboard') {
-                dashboard.classList.remove('hidden');
-                titleHeader.textContent = "My Tours Dashboard";
-                currentTourId = null;
-                currentBgAudio.pause();
-                loadDashboardTours();
-            } 
-            else if (viewName === 'builder') {
-                backBtn.classList.remove('hidden');
-                toolbarControls.classList.remove('hidden');
-                toolbarControls.classList.add('flex', 'flex-col', 'md:flex-row');
-                floatMenu.classList.remove('hidden');
-                saveInd.classList.remove('hidden');
-                
-                titleHeader.innerHTML = `<span class="text-slate-400 font-normal cursor-pointer hover:text-slate-600" id="headerTourTitle">${currentTourTitle}</span> <span class="text-slate-300 mx-1">/</span> <span id="headerSceneTitle"></span>`;
-                
-                document.getElementById('headerTourTitle').onclick = () => {
-                    customPrompt("Rename Tour:", currentTourTitle, (newName) => {
-                        if (newName && newName.trim()) {
-                            currentTourTitle = newName.trim();
-                            document.getElementById('headerTourTitle').textContent = currentTourTitle;
-                            autoSave();
-                        }
-                    });
-                };
-                
-                // Reset state for new builder session
-                isEditMode = true;
-                document.body.classList.add('edit-mode');
-                document.getElementById('toggleModeBtn').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Preview Mode';
-                
-                if (scenes.length === 0) {
-                    welcome.classList.remove('hidden');
-                    document.getElementById('headerSceneTitle').textContent = "New Tour";
-                } else {
-                    switchScene(scenes[0].id);
-                }
-            }
-        }
-
-        async function loadDashboardTours() {
-            if (!currentUser) return;
-            const grid = document.getElementById('toursGrid');
-            grid.innerHTML = '<div class="col-span-full text-center py-10 text-slate-500">Loading tours...</div>';
-            
-            try {
-                const toursRef = collection(db, 'users', currentUser.uid, 'tours');
-                const q = query(toursRef, orderBy("updatedAt", "desc"));
-                const querySnapshot = await getDocs(q);
-                
-                grid.innerHTML = '';
-                
-                if (querySnapshot.empty) {
-                    grid.innerHTML = '<div class="col-span-full text-center py-10 text-slate-500 bg-white rounded-xl border border-slate-200">No tours yet. Click "+ Create New Tour" to get started!</div>';
-                    return;
-                }
-
-                querySnapshot.forEach((docSnap) => {
-                    const tour = docSnap.data();
-                    const dateObj = new Date(tour.updatedAt);
-                    const dateString = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    
-                    const card = document.createElement('div');
-                    card.className = "bg-white rounded-xl shadow-sm p-6 border border-slate-200 hover:shadow-lg transition-shadow flex flex-col justify-between";
-                    
-                    card.innerHTML = `
-                        <div>
-                            <h3 class="text-xl font-bold text-slate-800 mb-2 truncate" title="${tour.title}">${tour.title}</h3>
-                            <p class="text-xs text-slate-500 mb-4 font-medium flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Edited: ${dateString}</p>
-                            <p class="text-sm text-slate-600 mb-6 bg-slate-50 p-2 rounded border border-slate-100">${tour.scenes ? tour.scenes.length : 0} Scene(s)</p>
-                        </div>
-                        <div class="flex gap-2 mt-auto">
-                            <button class="edit-tour-btn bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg font-bold hover:bg-indigo-100 w-full transition-colors flex items-center justify-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Open
-                            </button>
-                            <button class="delete-tour-btn bg-red-50 text-red-600 px-3 py-2 rounded-lg hover:bg-red-100 transition-colors" title="Delete Tour">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-                            </button>
-                        </div>
-                    `;
-                    
-                    card.querySelector('.edit-tour-btn').onclick = () => loadTourFromCloud(docSnap.id, tour);
-                    card.querySelector('.delete-tour-btn').onclick = () => {
-                        customConfirm(`Permanently delete tour "${tour.title}"?`, async (confirmed) => {
-                            if(confirmed) {
-                                await deleteDoc(doc(db, 'users', currentUser.uid, 'tours', docSnap.id));
-                                loadDashboardTours();
-                            }
-                        });
-                    };
-                    
-                    grid.appendChild(card);
-                });
-            } catch(e) {
-                console.error(e);
-                grid.innerHTML = '<div class="col-span-full text-center py-10 text-red-500">Error loading tours. Check console.</div>';
-            }
-        }
-
-        function loadTourFromCloud(id, data) {
-            currentTourId = id;
-            currentTourTitle = data.title || "Untitled Tour";
-            scenes = data.scenes || [];
-            tourIntro = data.tourIntro || { title: "Welcome to the Journey", desc: "Explore the environment and click on the information points to learn more!" };
-            tourTimer = data.tourTimer || 0;
-            
-            activeSceneId = null;
-            currentEditingIndex = null;
-            pendingHotspotPos = null;
-            visitedHotspots = {}; 
-            unlockedScenesInBuilder.clear();
-            builderTourCompleted = false;
-            
-            showView('builder');
-            setStatus("Tour loaded from cloud.", "success");
-        }
-
-        document.getElementById('dashboardCreateTourBtn').onclick = () => {
-            customPrompt("Name your new Tour:", "My New Tour", async (name) => {
-                if (!name || !name.trim()) return;
-                
-                const newTour = {
-                    title: name.trim(),
-                    scenes: [],
-                    tourIntro: { title: "Welcome to the Journey", desc: "Explore the environment and click on the information points to learn more!" },
-                    tourTimer: 0,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                };
-
-                try {
-                    const createBtn = document.getElementById('dashboardCreateTourBtn');
-                    const origText = createBtn.innerHTML;
-                    createBtn.innerHTML = "Creating...";
-                    createBtn.disabled = true;
-
-                    const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'tours'), newTour);
-                    
-                    createBtn.innerHTML = origText;
-                    createBtn.disabled = false;
-                    
-                    loadTourFromCloud(docRef.id, newTour);
-                } catch(e) {
-                    console.error("Error creating tour:", e);
-                    alert("Network error. Check your connection or Firestore permissions.");
-                    const createBtn = document.getElementById('dashboardCreateTourBtn');
-                    createBtn.innerHTML = "+ Create New Tour";
-                    createBtn.disabled = false;
-                }
-            });
-        };
-
-        document.getElementById('backToDashboardBtn').onclick = () => {
-            showView('dashboard');
-        };
-
         // --- Three.js Setup ---
         let scene, camera, renderer, sphere;
         let isUserInteracting = false, onMouseDownMouseX = 0, onMouseDownMouseY = 0, lon = 0, onMouseDownLon = 0, lat = 0, onMouseDownLat = 0, phi = 0, theta = 0;
@@ -989,10 +762,7 @@
 
         function anyModalOpen() {
             const modals = ['hotspotModal', 'builderTransitModal', 'builderQuizModal', 'builderIntroModal', 'tourSettingsModal', 'customPromptModal', 'customConfirmModal', 'aboutModal', 'mapModal', 'builderTimeoutOverlay', 'builderCompleteOverlay', 'pointQuizModal'];
-            return modals.some(id => {
-                const el = document.getElementById(id);
-                return el && !el.classList.contains('hidden');
-            });
+            return modals.some(id => !document.getElementById(id).classList.contains('hidden'));
         }
 
         function onPointerStart(event) {
@@ -1176,9 +946,8 @@
 
                 if (isVisited) {
                     marker.classList.add('visited');
-                    if (hs.isHidden) marker.classList.add('ghost-marker');
                 } else {
-                    marker.classList.remove('visited', 'ghost-marker');
+                    marker.classList.remove('visited');
                 }
 
                 if (vector.z < 1) {
@@ -1211,75 +980,77 @@
             }
         }
 
-        // --- Builder Preview Completion logic (Branching Path Aware) ---
+        // --- Builder Preview Completion & Timer Logic ---
+
+        function getReachableIndices() {
+            const reachable = new Set();
+            if (scenes.length === 0) return reachable;
+
+            const nextVisible = (i) => {
+                for (let j = i + 1; j < scenes.length; j++) if (!scenes[j].isHidden) return j;
+                return -1;
+            };
+
+            const stack = [0];
+            while (stack.length > 0) {
+                const i = stack.pop();
+                if (i === -1 || reachable.has(i)) continue;
+                reachable.add(i);
+
+                const s = scenes[i];
+                if (!s) continue;
+
+                const nxt = nextVisible(i);
+                if (nxt !== -1 && !reachable.has(nxt)) stack.push(nxt);
+
+                s.hotspots.forEach(h => {
+                    if (!h.targetSceneId) return;
+                    const t = scenes.findIndex(sc => sc.id === h.targetSceneId);
+                    if (t !== -1 && !reachable.has(t)) stack.push(t);
+                });
+            }
+            return reachable;
+        }
+
         function checkBuilderCompletion() {
             if (builderTourCompleted || scenes.length === 0) return;
 
             let totalH = 0, totalV = 0;
-            
-            // Only require hotspots for scenes actually unlocked on this path
-            unlockedScenesInBuilder.forEach(id => {
-                const s = scenes.find(sc => sc.id === id);
+            getReachableIndices().forEach(i => {
+                const s = scenes[i];
                 if (!s) return;
                 totalH += s.hotspots.length;
-                if (visitedHotspots[id]) totalV += visitedHotspots[id].size;
+                if (visitedHotspots[s.id]) totalV += visitedHotspots[s.id].size;
             });
 
-            // Need to find all points in all visited rooms to complete the branch
-            if (totalH === 0 || totalH !== totalV) return;
+            if (totalH > 0 && totalH === totalV) {
+                builderTourCompleted = true;
+                if (builderTimerInterval) clearInterval(builderTimerInterval);
 
-            const s = scenes.find(sc => sc.id === activeSceneId);
-            if (!s) return;
+                let elapsed = Date.now() - builderStartTime;
+                let totalSecs = Math.floor(elapsed / 1000);
+                let mins = Math.floor(totalSecs / 60);
+                let secs = totalSecs % 60;
 
-            const currIdx = scenes.findIndex(sc => sc.id === activeSceneId);
-            let nxtId = null;
-            for(let i = currIdx + 1; i < scenes.length; i++) {
-                if(!scenes[i].isHidden) { nxtId = scenes[i].id; break; }
-            }
-
-            // If the room demands a transit challenge to move to a locked room, not done.
-            if (s.transitConfig && nxtId && !unlockedScenesInBuilder.has(nxtId)) return;
-            // If the room has a linear next room that is locked, not done.
-            if (!s.transitConfig && nxtId && !unlockedScenesInBuilder.has(nxtId)) return;
-
-            // If the room has an unvisited portal, not done.
-            let hasUnvisitedPortal = false;
-            s.hotspots.forEach(h => {
-                if (h.targetSceneId && !unlockedScenesInBuilder.has(h.targetSceneId)) {
-                    hasUnvisitedPortal = true;
+                if (tourTimer === 0) {
+                    document.getElementById('builderTimeText').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
                 }
-            });
 
-            if (hasUnvisitedPortal) return;
+                let acc = builderTotalClicks > 0 ? Math.round((totalH / builderTotalClicks) * 100) : 100;
+                if (acc > 100) acc = 100;
+                document.getElementById('builderAccuracyText').textContent = acc + '%';
+                document.getElementById('builderAccuracyContainer').classList.remove('hidden');
 
-            // If we get here: All visited rooms are 100% found, and there are no unclicked 
-            // forward paths from the current room. This branch is complete!
-            builderTourCompleted = true;
-            if (builderTimerInterval) clearInterval(builderTimerInterval);
+                const btd = document.getElementById('builderTimerDisplay');
+                btd.classList.remove('hidden');
+                btd.classList.add('bg-emerald-600', 'border-emerald-500', 'border-2');
+                btd.classList.remove('bg-slate-900/80');
 
-            let elapsed = Date.now() - builderStartTime;
-            let totalSecs = Math.floor(elapsed / 1000);
-            let mins = Math.floor(totalSecs / 60);
-            let secs = totalSecs % 60;
+                renderHotspots(); // This unhides the hidden points instantly
 
-            if (tourTimer === 0) {
-                document.getElementById('builderTimeText').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+                document.getElementById('progressHud').classList.add('hidden');
+                document.getElementById('builderFinishJourneyBtn').classList.remove('hidden');
             }
-
-            let acc = builderTotalClicks > 0 ? Math.round((totalH / builderTotalClicks) * 100) : 100;
-            if (acc > 100) acc = 100;
-            document.getElementById('builderAccuracyText').textContent = acc + '%';
-            document.getElementById('builderAccuracyContainer').classList.remove('hidden');
-
-            const btd = document.getElementById('builderTimerDisplay');
-            btd.classList.remove('hidden');
-            btd.classList.add('bg-emerald-600', 'border-emerald-500', 'border-2');
-            btd.classList.remove('bg-slate-900/80');
-
-            renderHotspots(); 
-
-            document.getElementById('progressHud').classList.add('hidden');
-            document.getElementById('builderFinishJourneyBtn').classList.remove('hidden');
         }
 
         document.getElementById('builderFinishJourneyBtn').onclick = () => {
@@ -1405,10 +1176,9 @@
                 marker.style.width = '44px';
                 marker.style.height = '44px';
                 marker.classList.add('visited');
-                if (hs.isHidden) marker.classList.add('ghost-marker');
                 marker.classList.remove('opacity-0', 'hover:opacity-30', 'bg-white', 'text-transparent', 'hover:text-slate-800');
                 marker.classList.add('bg-indigo-500', 'text-white');
-                marker.innerHTML = hs.type === 'quiz' ? '✓' : 'i';
+                marker.innerHTML = hs.type === 'quiz' ? '✓' : (hs.isHidden ? '?' : 'i');
             }
 
             updateProgressHud();
@@ -1473,7 +1243,6 @@
                             const draggedScene = scenes.splice(draggedIndex, 1)[0];
                             scenes.splice(i, 0, draggedScene);
                             renderFloatingMenu(); // Re-render the reordered list
-                            autoSave();
                         }
                     });
                 }
@@ -1495,11 +1264,8 @@
                     customPrompt('Rename Scene:', s.title, (newName) => {
                         if (newName && newName.trim()) {
                             s.title = newName.trim();
-                            if (activeSceneId === s.id) {
-                                document.getElementById('headerSceneTitle').textContent = s.title;
-                            }
+                            if (activeSceneId === s.id) document.getElementById('currentSceneTitleHeader').textContent = s.title;
                             renderFloatingMenu();
-                            autoSave();
                         }
                     });
                 };
@@ -1514,7 +1280,6 @@
                     e.stopPropagation();
                     s.isHidden = !s.isHidden;
                     renderFloatingMenu();
-                    autoSave();
                 };
 
                 const delBtn = document.createElement('button');
@@ -1527,7 +1292,6 @@
                         if (confirmed) {
                             scenes = scenes.filter(sc => sc.id !== s.id);
                             delete visitedHotspots[s.id];
-                            autoSave();
                             switchScene(scenes[0] ? scenes[0].id : null);
                         }
                     });
@@ -1553,23 +1317,20 @@
             currentBgAudio.src = '';
 
             // Persist hotspot discovery natively per scene
-            if (id) {
-                visitedSet(id);
-                if (!isEditMode) unlockedScenesInBuilder.add(id);
-            }
+            if (id) visitedSet(id);
 
             if (!s) {
                 document.getElementById('workspaceSection').classList.add('hidden');
                 document.getElementById('uploadSection').classList.add('hidden');
                 document.getElementById('welcomeSection').classList.remove('hidden');
-                document.getElementById('headerSceneTitle').textContent = "New Tour";
+                document.getElementById('currentSceneTitleHeader').textContent = "Virtual Learning Journey Builder";
                 document.getElementById('zoomControls').classList.add('hidden');
                 renderFloatingMenu();
                 return;
             }
 
             document.getElementById('welcomeSection').classList.add('hidden');
-            document.getElementById('headerSceneTitle').textContent = s.title;
+            document.getElementById('currentSceneTitleHeader').textContent = s.title;
             document.getElementById('zoomControls').classList.remove('hidden');
 
             const imgSrcToLoad = s.localImageSrc || s.imageSrc;
@@ -1641,21 +1402,177 @@
             renderFloatingMenu();
         }
 
-        // Point Quiz Submit Handler for Builder Preview
-        if(document.getElementById('pqSub')) {
-            document.getElementById('pqSub').onclick = () => {
-                if (activePointQuizIndex === null) return;
-                const ans = document.getElementById('pqAns').value.trim().toLowerCase();
-                if (ans === activePointQuizHs.quizAnswer.toLowerCase()) {
-                    document.getElementById('pointQuizModal').classList.add('hidden');
-                    processHotspotDiscovery(activePointQuizHs, activePointQuizIndex);
-                    activePointQuizIndex = null;
-                    activePointQuizHs = null;
+        function renderHotspots() {
+            const overlay = document.getElementById('hotspotOverlay');
+            overlay.innerHTML = '';
+            const s = scenes.find(sc => sc.id === activeSceneId);
+            if (!s) return;
+
+            let hasUnclickedGatekeeper = false;
+            if (!isEditMode) {
+                hasUnclickedGatekeeper = s.hotspots.some((h, i) => h.isGatekeeper && !visitedSet(activeSceneId).has(i));
+            }
+
+            s.hotspots.forEach((hs, idx) => {
+                const marker = document.createElement('div');
+                marker.id = 'marker-' + idx;
+
+                let baseClass = 'hotspot-marker absolute border-2 rounded-full flex items-center justify-center text-sm font-bold pointer-events-auto cursor-pointer shadow-lg ';
+
+                let sizeMult = hs.hiddenSize || 1;
+                let dim = 44;
+                let isQuiz = hs.type === 'quiz';
+                let isVisited = visitedSet(activeSceneId).has(idx);
+
+                if (isEditMode) {
+                    if (hs.isGatekeeper) {
+                        baseClass += 'bg-amber-500 border-white text-white';
+                        marker.innerHTML = '★';
+                    } else if (hs.isHidden) {
+                        baseClass += 'bg-slate-500 border-white text-white border-dashed opacity-70';
+                        marker.innerHTML = '?';
+                        dim = 44 * sizeMult;
+                    } else if (isQuiz) {
+                        baseClass += 'bg-purple-600 border-white text-white';
+                        marker.innerHTML = '?';
+                    } else {
+                        baseClass += 'bg-indigo-500 border-white text-white';
+                        marker.innerHTML = hs.isHidden ? '?' : 'i';
+                        if (isVisited) baseClass += ' visited';
+                    }
                 } else {
-                    document.getElementById('pqError').classList.remove('hidden');
+                    let isHiddenNow = hs.isHidden && !builderTourCompleted && !isVisited;
+                    
+                    if (hs.isGatekeeper) {
+                        baseClass += 'bg-amber-500 border-white text-white';
+                        marker.innerHTML = '★';
+                        if (isHiddenNow) {
+                            baseClass += ' opacity-0 hover:opacity-30';
+                            dim = 44 * sizeMult;
+                        }
+                        if (isVisited) baseClass += ' visited';
+                    } else if (isHiddenNow) {
+                        baseClass += 'opacity-0 hover:opacity-30 bg-white border-white text-transparent hover:text-slate-800';
+                        marker.innerHTML = '?';
+                        dim = 44 * sizeMult;
+                    } else if (isQuiz) {
+                        baseClass += 'bg-purple-600 border-white text-white';
+                        marker.innerHTML = '?';
+                        if (isVisited) {
+                            baseClass += ' visited';
+                            marker.innerHTML = '✓';
+                        }
+                    } else {
+                        baseClass += 'bg-indigo-500 border-white text-white';
+                        marker.innerHTML = hs.isHidden ? '?' : 'i';
+                        if (isVisited) baseClass += ' visited';
+                    }
                 }
-            };
+
+                marker.style.width = dim + 'px';
+                marker.style.height = dim + 'px';
+
+                marker.className = baseClass;
+                marker.onclick = (e) => {
+                    e.stopPropagation();
+                    if (!isEditMode) {
+                        let currentIsVisited = visitedSet(activeSceneId).has(idx);
+                        
+                        if (!currentIsVisited && !builderTourCompleted) {
+                            if (isQuiz) {
+                                activePointQuizIndex = idx;
+                                activePointQuizHs = hs;
+                                document.getElementById('pqText').textContent = hs.quizQuestion;
+                                document.getElementById('pqAns').value = '';
+                                document.getElementById('pqAns').readOnly = false;
+                                document.getElementById('pqError').classList.add('hidden');
+                                document.getElementById('pqSub').style.display = 'inline-block';
+                                document.getElementById('pointQuizModal').classList.remove('hidden');
+                                return; 
+                            }
+                            processHotspotDiscovery(hs, idx);
+                        } else if (isQuiz) {
+                            // Review Mode
+                            document.getElementById('pqText').textContent = hs.quizQuestion;
+                            document.getElementById('pqAns').value = hs.quizAnswer;
+                            document.getElementById('pqAns').readOnly = true;
+                            document.getElementById('pqError').classList.add('hidden');
+                            document.getElementById('pqSub').style.display = 'none';
+                            document.getElementById('pointQuizModal').classList.remove('hidden');
+                        } else {
+                            openPopup(hs, idx);
+                        }
+
+                    } else {
+                        currentEditingIndex = idx;
+                        pendingHotspotPos = null;
+
+                        document.getElementById('hotspotModalTitle').textContent = 'Edit Information Point';
+                        document.getElementById('hsTitle').value = hs.title || '';
+                        document.getElementById('hsTitle').classList.remove('border-red-500');
+                        
+                        const type = hs.type || 'info';
+                        document.getElementById('hsType').value = type;
+                        document.getElementById('hsType').dispatchEvent(new Event('change'));
+
+                        document.getElementById('hsDesc').value = hs.desc || '';
+                        document.getElementById('hsVideo').value = hs.videoUrl || '';
+                        
+                        document.getElementById('hsQuizQuestion').value = hs.quizQuestion || '';
+                        document.getElementById('hsQuizAnswer').value = hs.quizAnswer || '';
+
+                        document.getElementById('hsImageUrl').value = hs.imageUrl || '';
+                        const preview = document.getElementById('hsImagePreview');
+                        const clearBtn = document.getElementById('hsImageClearBtn');
+                        if (hs.imageUrl) {
+                            preview.src = hs.imageUrl;
+                            preview.classList.remove('hidden');
+                            clearBtn.classList.remove('hidden');
+                        } else {
+                            preview.src = '';
+                            preview.classList.add('hidden');
+                            clearBtn.classList.add('hidden');
+                        }
+
+                        document.getElementById('hsIsGatekeeper').checked = hs.isGatekeeper || false;
+                        document.getElementById('hsIsHidden').checked = hs.isHidden || false;
+                        document.getElementById('hiddenSizeContainer').style.display = hs.isHidden ? 'block' : 'none';
+                        document.getElementById('hsHiddenSize').value = hs.hiddenSize || 3;
+                        document.getElementById('hsHiddenSizeVal').textContent = hs.hiddenSize || 3;
+
+                        const select = document.getElementById('hsTargetScene');
+                        select.innerHTML = '<option value="">None (Standard Point)</option>';
+                        scenes.forEach(otherScene => {
+                            if (otherScene.id !== activeSceneId) {
+                                const opt = document.createElement('option');
+                                opt.value = otherScene.id;
+                                opt.textContent = otherScene.title;
+                                if (otherScene.id === hs.targetSceneId) opt.selected = true;
+                                select.appendChild(opt);
+                            }
+                        });
+
+                        document.getElementById('deleteModalHsBtn').classList.remove('hidden');
+                        document.getElementById('hotspotModal').classList.remove('hidden');
+                    }
+                };
+                overlay.appendChild(marker);
+            });
         }
+
+        // Point Quiz Submit Handler for Builder Preview
+        document.getElementById('pqSub').onclick = () => {
+            if (activePointQuizIndex === null) return;
+            const ans = document.getElementById('pqAns').value.trim().toLowerCase();
+            if (ans === activePointQuizHs.quizAnswer.toLowerCase()) {
+                document.getElementById('pointQuizModal').classList.add('hidden');
+                processHotspotDiscovery(activePointQuizHs, activePointQuizIndex);
+                activePointQuizIndex = null;
+                activePointQuizHs = null;
+            } else {
+                document.getElementById('pqError').classList.remove('hidden');
+            }
+        };
 
         function openPopup(hs, idx) {
             currentEditingIndex = idx;
@@ -1781,11 +1698,14 @@
 
         // --- Auth & Firestore ---
         onAuthStateChanged(auth, async (user) => {
+            const overlay = document.getElementById('loginOverlay');
             const profile = document.getElementById('userProfile');
 
             if (user) {
                 currentUser = user;
-                
+                overlay.classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => overlay.classList.add('hidden'), 500);
+
                 profile.classList.remove('hidden');
                 profile.classList.add('flex');
 
@@ -1817,12 +1737,12 @@
                 } catch (dbError) {
                     console.error("Firestore Error:", dbError);
                 }
-                
-                showView('dashboard');
 
             } else {
                 currentUser = null;
-                showView('login');
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.remove('opacity-0', 'pointer-events-none'), 10);
+
                 profile.classList.add('hidden');
                 profile.classList.remove('flex');
             }
@@ -1855,8 +1775,7 @@
         document.getElementById('signOutBtn').onclick = () => {
             signOut(auth).then(() => {
                 scenes = [];
-                currentTourId = null;
-                showView('login');
+                switchScene(null);
             });
         };
 
@@ -1887,7 +1806,6 @@
                 scenes.push({ id, title: name.trim(), imageSrc: null, localImageSrc: null, audioSrc: null, localAudioSrc: null, hotspots: [], transitConfig: null, isHidden: false });
                 switchScene(id);
                 fabPanel.classList.add('hidden');
-                autoSave();
             });
         };
 
@@ -1916,7 +1834,6 @@
             document.getElementById('addAudioBtnText').textContent = "Add Audio";
             document.getElementById('clearAudioBtn').classList.add('hidden');
             setStatus("Audio removed from scene.", "success");
-            autoSave();
         };
 
         document.getElementById('audioUploadInput').onchange = (e) => {
@@ -1949,7 +1866,6 @@
                     const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
                     s.audioSrc = downloadURL;
                     setStatus("Audio upload complete! Saved to cloud.", "success");
-                    autoSave();
                 }
             );
             e.target.value = '';
@@ -2042,7 +1958,6 @@
 
                         setStatus("Tour imported successfully!", "success");
                         switchScene(scenes.length > 0 ? scenes[0].id : null);
-                        autoSave();
                     } else {
                         setStatus("Invalid file format. Could not find tour data.", "error");
                     }
@@ -2093,7 +2008,6 @@
                         if (s) {
                             s.imageSrc = downloadURL;
                             setStatus("Upload complete! Image saved to cloud.", "success");
-                            autoSave();
                         }
                     } catch (err) {
                         setStatus("Error getting download link. Check console.", "error");
@@ -2179,7 +2093,6 @@
             currentEditingIndex = null;
             renderHotspots();
             updateProgressHud();
-            autoSave();
         };
 
         document.getElementById('cancelHsBtn').onclick = () => {
@@ -2196,7 +2109,6 @@
                 currentEditingIndex = null;
                 renderHotspots();
                 updateProgressHud();
-                autoSave();
             }
         };
 
@@ -2250,7 +2162,6 @@
             tourTimer = isNaN(val) || val < 0 ? 0 : val;
             document.getElementById('tourSettingsModal').classList.add('hidden');
             setStatus("Tour settings saved. " + (tourTimer > 0 ? "Timer set to " + tourTimer + " mins." : "Timer disabled."), "success");
-            autoSave();
         };
 
         document.getElementById('closeSettingsBtn').onclick = () => {
@@ -2269,7 +2180,6 @@
             tourIntro.desc = document.getElementById('introDesc').value.trim();
             document.getElementById('builderIntroModal').classList.add('hidden');
             setStatus("Tour intro saved.", "success");
-            autoSave();
         };
 
         document.getElementById('closeIntroBtn').onclick = () => {
@@ -2293,7 +2203,6 @@
                 s.transitConfig = { question: q, answer: a };
                 document.getElementById('builderTransitModal').classList.add('hidden');
                 setStatus("Transit rule saved.", "success");
-                autoSave();
             }
         };
 
@@ -2301,7 +2210,6 @@
             const s = scenes.find(sc => sc.id === activeSceneId);
             if (s) s.transitConfig = null;
             document.getElementById('builderTransitModal').classList.add('hidden');
-            autoSave();
         };
 
         document.getElementById('closeTransitModal').onclick = () => {
@@ -2456,7 +2364,7 @@
         document.getElementById('exportBtn').onclick = () => {
             if (!scenes.length || scenes.some(s => !s.imageSrc)) { setStatus("Setup scenes and wait for cloud uploads to finish first.", "error"); return; }
 
-            customPrompt("Enter Export Filename (without .html):", currentTourTitle || "360-tour", (fileName) => {
+            customPrompt("Enter Export Filename (without .html):", "360-tour", (fileName) => {
                 if (!fileName) return;
 
                 const safeFileName = fileName.trim().replace(/[^a-z0-9-_ \.]/gi, '_') || '360-tour';
@@ -2477,7 +2385,18 @@
                     "    <script src=\"https://cdn.tailwindcss.com\"><" + "/script>",
                     "    <script src=\"https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js\"><" + "/script>",
                     "    <style>",
-                    "        body{margin:0;overflow:hidden;background:#000;position:fixed;width:100%;height:100%;touch-action:none;overscroll-behavior:none;}.hotspot{position:absolute;width:44px;height:44px;font-size:16px;background:#6366f1;border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;cursor:pointer;transform:translate(-50%,-50%);box-shadow:0 0 10px rgba(0,0,0,0.5);font-weight:bold;transition:background 0.3s;z-index:10;}.visited{background:#10b981!important;border-color:#fff!important;color:#fff!important;box-shadow:0 0 10px rgba(0,0,0,0.5)!important;}.ghost-marker{opacity:0.4!important;}.ghost-marker:hover{opacity:0.8!important;}.hidden-hotspot{background:transparent!important;border-color:transparent!important;color:transparent!important;box-shadow:none!important;transition:all 0.3s;}.hidden-hotspot:hover{background:rgba(255,255,255,0.2)!important;border-color:rgba(255,255,255,0.4)!important;color:white!important;}.gatekeeper{background:#f59e0b!important;border-color:#fff!important;color:white!important;}.hud-complete{background-color:#10b981!important;border-color:#059669!important;animation:pulseGreen 2s infinite;}#menu{position:fixed;bottom:20px;right:20px;z-index:100;}@keyframes bounceCentered{0%,100%{transform:translateY(0) translateX(-50%);}50%{transform:translateY(-10px) translateX(-50%);}}@keyframes pulseGreen{0%{box-shadow:0 0 0 0 rgba(16,185,129,0.7);}70%{box-shadow:0 0 0 10px rgba(16,185,129,0);}100%{box-shadow:0 0 0 0 rgba(16,185,129,0);}}.transit-btn{animation:bounceCentered 2s infinite;left:50%;}.finish-btn{animation:bounceCentered 2s infinite;left:50%;}",
+                    "        body { margin: 0; overflow: hidden; background: #000; position: fixed; width: 100%; height: 100%; touch-action: none; overscroll-behavior: none; }",
+                    "        .hotspot { position: absolute; width: 44px; height: 44px; font-size: 16px; background: #6366f1; border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer; transform: translate(-50%, -50%); box-shadow: 0 0 10px rgba(0,0,0,0.5); font-weight: bold; transition: background 0.3s; z-index: 10; }",
+                    "        .visited { background: #10b981 !important; border-color: #fff !important; color: #fff !important; opacity: 1 !important; box-shadow: 0 0 10px rgba(0,0,0,0.5) !important; }",
+                    "        .hidden-hotspot { background: transparent !important; border-color: transparent !important; color: transparent !important; box-shadow: none !important; transition: all 0.3s; }",
+                    "        .hidden-hotspot:hover { background: rgba(255,255,255,0.2) !important; border-color: rgba(255,255,255,0.4) !important; color: white !important; }",
+                    "        .gatekeeper { background: #f59e0b !important; border-color: #fff !important; color: white !important; }",
+                    "        .hud-complete { background-color: #10b981 !important; border-color: #059669 !important; animation: pulseGreen 2s infinite; }",
+                    "        #menu { position: fixed; bottom: 20px; right: 20px; z-index: 100; }",
+                    "        @keyframes bounceCentered { 0%, 100% { transform: translateY(0) translateX(-50%); } 50% { transform: translateY(-10px) translateX(-50%); } }",
+                    "        @keyframes pulseGreen { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }",
+                    "        .transit-btn { animation: bounceCentered 2s infinite; left: 50%; }",
+                    "        .finish-btn { animation: bounceCentered 2s infinite; left: 50%; }",
                     "    </style>",
                     "</head>",
                     "<body>",
@@ -2488,194 +2407,294 @@
                     "        <button id=\"zOut\" style=\"width: 40px; height: 40px; border-radius: 50%; background: rgba(30,41,59,0.8); color: white; border: 1px solid #475569; font-size: 20px; font-weight: bold; cursor: pointer; backdrop-filter: blur(4px); transition: transform 0.1s;\">-</button>",
                     "    </div>",
                     "    <div id=\"timerDisplay\" class=\"absolute top-6 right-6 bg-slate-900/80 text-white px-5 py-2 rounded-full font-bold text-sm backdrop-blur shadow-lg z-40 transition-all duration-300 hidden\">",
-                    "        <span id=\"timeTextContainer\">⏱️ <span id=\"timeText\">00:00</span></span><span id=\"accuracyContainer\" class=\"hidden\"> | 🎯 <span id=\"accuracyText\">100%</span> Accuracy</span>",
+                    "        <span id=\"timeTextContainer\">⏱️ <span id=\"timeText\">00:00</span></span>",
+                    "        <span id=\"accuracyContainer\" class=\"hidden\"> | 🎯 <span id=\"accuracyText\">100%</span> Accuracy</span>",
                     "    </div>",
                     "    <div id=\"progressHud\" class=\"absolute top-6 left-1/2 -translate-x-1/2 bg-slate-900/80 text-white px-5 py-2 rounded-full font-bold text-sm backdrop-blur shadow-lg z-40 transition-all duration-300 hidden flex items-center gap-2 border border-slate-700 pointer-events-none\">",
-                    "        <span>🔍 Discovered:</span><span id=\"pCount\" class=\"text-indigo-300\">0</span><span class=\"text-slate-500\">/</span><span id=\"pTotal\">0</span>",
+                    "        <span>🔍 Discovered:</span>",
+                    "        <span id=\"pCount\" class=\"text-indigo-300\">0</span>",
+                    "        <span class=\"text-slate-500\">/</span>",
+                    "        <span id=\"pTotal\">0</span>",
                     "    </div>",
-                    "    <button id=\"finishJourneyBtn\" class=\"absolute top-6 left-1/2 -translate-x-1/2 finish-btn bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-full font-bold shadow-[0_0_15px_rgba(245,158,11,0.6)] z-40 hidden border-2 border-amber-300\">🎉 Finish Journey</button>",
+                    "    <button id=\"finishJourneyBtn\" class=\"absolute top-6 left-1/2 -translate-x-1/2 finish-btn bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-full font-bold shadow-[0_0_15px_rgba(245,158,11,0.6)] z-40 hidden border-2 border-amber-300\">",
+                    "        🎉 Finish Journey",
+                    "    </button>",
                     "    <div id=\"loadingOverlay\" class=\"fixed inset-0 bg-slate-950 z-[99999] flex flex-col items-center justify-center transition-all duration-500\">",
-                    "        <div id=\"loadingContent\" class=\"text-center\"><div class=\"w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4\"></div><p class=\"text-white font-medium text-lg tracking-wide\">Loading 360° Experience...</p></div>",
-                    "        <div id=\"errorBox\" class=\"max-w-md w-full mx-4 bg-slate-900 border border-red-500/30 rounded-2xl p-6 text-center hidden\"><h3 class=\"text-white font-bold text-lg mb-2\">Image Loading Blocked (CORS)</h3><button onclick=\"window.location.reload()\" class=\"bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2 rounded-lg text-sm transition-colors\">Retry Loading</button></div>",
+                    "        <div id=\"loadingContent\" class=\"text-center\">",
+                    "            <div class=\"w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4\"></div>",
+                    "            <p class=\"text-white font-medium text-lg tracking-wide\">Loading 360° Experience...</p>",
+                    "            <p id=\"loadingStatusText\" class=\"text-slate-400 text-sm mt-2\">Fetching scene panorama...</p>",
+                    "        </div>",
+                    "        <div id=\"errorBox\" class=\"max-w-md w-full mx-4 bg-slate-900 border border-red-500/30 rounded-2xl p-6 text-center hidden\">",
+                    "            <div class=\"bg-red-500/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500\">",
+                    "                <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-6 w-6\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\">",
+                    "                    <path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z\" />",
+                    "                </svg>",
+                    "            </div>",
+                    "            <h3 class=\"text-white font-bold text-lg mb-2\">Image Loading Blocked (CORS)</h3>",
+                    "            <p class=\"text-slate-400 text-sm mb-4 leading-relaxed\">",
+                    "                WebGL requires cross-origin permission to render this 360° image. Please make sure you have configured CORS rules on your Firebase Storage bucket.",
+                    "            </p>",
+                    "            <div class=\"bg-slate-950 rounded-lg p-3 text-left font-mono text-xs text-slate-300 overflow-x-auto mb-4 max-h-24\">",
+                    "                1. Paste this in Cloud Shell:<br>",
+                    "                echo '[{\"origin\": [\"*\"],\"method\": [\"GET\"],\"maxAgeSeconds\": 3600}]' > cors.json<br><br>",
+                    "                2. Apply rule:<br>",
+                    "                gsutil cors set cors.json gs://virtuallearningjourney.firebasestorage.app",
+                    "            </div>",
+                    "            <button onclick=\"window.location.reload()\" class=\"bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2 rounded-lg text-sm transition-colors\">",
+                    "                Retry Loading",
+                    "            </button>",
+                    "        </div>",
                     "    </div>",
                     "    <div id=\"introOverlay\" class=\"fixed inset-0 bg-slate-900/90 z-[400] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity duration-500\">",
                     "        <div class=\"bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full text-center border-t-4 border-blue-500 transform transition-transform scale-100\">",
-                    "            <h1 id=\"introTitleText\" class=\"text-2xl font-bold text-slate-800 mb-3\"></h1><p id=\"introDescText\" class=\"text-slate-600 mb-8 leading-relaxed whitespace-pre-line\"></p><button id=\"startJourneyBtn\" class=\"bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-transform hover:scale-105 w-full\">Start Journey</button>",
+                    "            <div class=\"bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600\">",
+                    "                <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-8 w-8\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\">",
+                    "                    <path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z\" />",
+                    "                </svg>",
+                    "            </div>",
+                    "            <h1 id=\"introTitleText\" class=\"text-2xl font-bold text-slate-800 mb-3\"></h1>",
+                    "            <p id=\"introDescText\" class=\"text-slate-600 mb-8 leading-relaxed whitespace-pre-line\"></p>",
+                    "            <button id=\"startJourneyBtn\" class=\"bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-transform hover:scale-105 w-full\">Start Journey</button>",
                     "        </div>",
                     "    </div>",
                     "    <div id=\"timeoutOverlay\" class=\"fixed inset-0 bg-red-900/95 hidden z-[10000] flex items-center justify-center p-4 transition-opacity duration-500 opacity-0\">",
-                    "        <div class=\"bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-t-4 border-red-500\"><h2 class=\"text-3xl font-bold text-slate-800 mb-3\">Time's Up!</h2><ul id=\"timeoutReport\" class=\"text-sm text-slate-600 space-y-1 mb-4\"></ul><button onclick=\"location.reload()\" class=\"bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg w-full\">Restart Journey</button></div>",
+                    "        <div class=\"bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-t-4 border-red-500\">",
+                    "            <div class=\"bg-red-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl\">⏳</div>",
+                    "            <h2 class=\"text-3xl font-bold text-slate-800 mb-3\">Time's Up!</h2>",
+                    "            <p class=\"text-slate-600 mb-6 leading-relaxed\">The timer has run out. Here is your exploration report:</p>",
+                    "            <div class=\"bg-slate-50 rounded-xl p-4 mb-6 border border-slate-200 text-left\">",
+                    "                <p class=\"font-bold mb-2 text-slate-700 text-sm uppercase tracking-wider\">Fully Explored Scenes</p>",
+                    "                <ul id=\"timeoutReport\" class=\"text-sm text-slate-600 space-y-1\"></ul>",
+                    "            </div>",
+                    "            <button onclick=\"location.reload()\" class=\"bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg w-full\">Restart Journey</button>",
+                    "        </div>",
                     "    </div>",
                     "    <div id=\"completeOverlay\" class=\"fixed inset-0 bg-emerald-900/95 hidden z-[10000] flex items-center justify-center p-4 transition-opacity duration-500 opacity-0\">",
-                    "        <div class=\"bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-t-4 border-emerald-500\"><h2 class=\"text-3xl font-bold text-slate-800 mb-3\">Journey Complete!</h2><p id=\"completionTimeText\" class=\"text-slate-600 mb-8 font-medium text-lg\"></p><button onclick=\"document.getElementById('completeOverlay').classList.add('hidden'); openMap();\" class=\"bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg w-full\">Open Map</button></div>",
+                    "        <div class=\"bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border-t-4 border-emerald-500\">",
+                    "            <div class=\"bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl\">🏆</div>",
+                    "            <h2 class=\"text-3xl font-bold text-slate-800 mb-3\">Journey Complete!</h2>",
+                    "            <p id=\"completionTimeText\" class=\"text-slate-600 mb-8 font-medium text-lg\"></p>",
+                    "            <div class=\"bg-amber-50 rounded-xl p-4 mb-6 border border-amber-200 text-amber-800\">",
+                    "                <p class=\"font-bold mb-1\">🗺️ Fast Travel Unlocked!</p>",
+                    "                <p class=\"text-sm\">You can now use the Map to instantly travel to any location, and all hidden clues are now fully visible.</p>",
+                    "            </div>",
+                    "            <button onclick=\"document.getElementById('completeOverlay').classList.add('hidden'); openMap();\" class=\"bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg w-full\">Open Map</button>",
+                    "        </div>",
                     "    </div>",
                     "    <div id=\"fadeOverlay\" class=\"fixed inset-0 bg-slate-950 z-[9999] opacity-0 pointer-events-none transition-opacity duration-500\"></div>",
-                    "    <div id=\"unlockToast\" class=\"fixed top-24 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-3 rounded-full font-bold shadow-xl flex items-center gap-2 transition-all duration-500 opacity-0 pointer-events-none z-[150] transform -translate-y-4\"><span>✨ New Site Unlocked in Menu!</span></div>",
+                    "    <div id=\"unlockToast\" class=\"fixed top-24 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-3 rounded-full font-bold shadow-xl flex items-center gap-2 transition-all duration-500 opacity-0 pointer-events-none z-[150] transform -translate-y-4\">",
+                    "        <span>✨ New Site Unlocked in Menu!</span>",
+                    "    </div>",
                     "    <div id=\"transitContainer\" class=\"fixed bottom-10 transit-btn hidden z-50\">",
-                    "        <button id=\"transitTrigger\" class=\"bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-full font-bold shadow-2xl border-4 border-white flex items-center gap-2 transition-all hover:scale-105 active:scale-95\"><span>Transit Challenge</span></button>",
+                    "        <button id=\"transitTrigger\" class=\"bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-full font-bold shadow-2xl border-4 border-white flex items-center gap-2 transition-all hover:scale-105 active:scale-95\">",
+                    "            <span>Transit Challenge</span>",
+                    "            <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12h14\"></path><path d=\"m12 5 7 7-7 7\"></path></svg>",
+                    "        </button>",
                     "    </div>",
                     "    <div id=\"menu\" class=\"flex flex-col items-end\">",
                     "        <div id=\"menuPanel\" class=\"hidden bg-white p-4 rounded-lg mb-4 shadow-2xl w-64 origin-bottom-right\">",
-                    "            <h3 class=\"font-bold border-b mb-2 pb-1\">Sites</h3><div id=\"sceneLinks\" class=\"space-y-1 mb-3\"></div>",
-                    "            <div class=\"pt-3 border-t border-slate-200 mt-3 mb-3\"><button id=\"openMapMenuBtn\" class=\"w-full text-left p-2 rounded bg-slate-100 text-slate-400 font-bold cursor-not-allowed transition-colors\" onclick=\"document.getElementById('mapLockedNotice').classList.remove('hidden'); setTimeout(function(){ document.getElementById('mapLockedNotice').classList.add('hidden'); }, 3000);\">🔒 Fast Travel Map</button><p id=\"mapLockedNotice\" class=\"text-xs text-amber-600 mt-1 hidden\">Map is locked. Discover all hotspots to unlock Fast Travel!</p></div>",
-                    "            <div class=\"pt-3 border-t border-slate-200 flex items-center justify-between\"><span class=\"text-sm font-bold text-slate-700\">Momentum Pan</span><input type=\"checkbox\" id=\"expMomentumToggle\" checked class=\"w-4 h-4 accent-indigo-600 cursor-pointer\"></div>",
-                    "            <div class=\"pt-2 flex items-center justify-between\"><span class=\"text-sm font-bold text-slate-700\">Background Audio</span><input type=\"checkbox\" id=\"expAudioToggle\" checked class=\"w-4 h-4 accent-indigo-600 cursor-pointer\"></div>",
+                    "            <h3 class=\"font-bold border-b mb-2 pb-1\">Sites</h3>",
+                    "            <div id=\"sceneLinks\" class=\"space-y-1 mb-3\"></div>",
+                    "            <div class=\"pt-3 border-t border-slate-200 mt-3 mb-3\">",
+                    "                <button id=\"openMapMenuBtn\" class=\"w-full text-left p-2 rounded bg-slate-100 text-slate-400 font-bold cursor-not-allowed transition-colors\" onclick=\"document.getElementById('mapLockedNotice').classList.remove('hidden'); setTimeout(function(){ document.getElementById('mapLockedNotice').classList.add('hidden'); }, 3000);\">",
+                    "                    🔒 Fast Travel Map",
+                    "                </button>",
+                    "                <p id=\"mapLockedNotice\" class=\"text-xs text-amber-600 mt-1 hidden\">Map is locked. Discover all hotspots to unlock Fast Travel!</p>",
+                    "            </div>",
+                    "            <div class=\"pt-3 border-t border-slate-200 flex items-center justify-between\">",
+                    "                <span class=\"text-sm font-bold text-slate-700\">Momentum Pan</span>",
+                    "                <input type=\"checkbox\" id=\"expMomentumToggle\" checked class=\"w-4 h-4 accent-indigo-600 cursor-pointer\">",
+                    "            </div>",
+                    "            <div class=\"pt-2 flex items-center justify-between\">",
+                    "                <span class=\"text-sm font-bold text-slate-700\">Background Audio</span>",
+                    "                <input type=\"checkbox\" id=\"expAudioToggle\" checked class=\"w-4 h-4 accent-indigo-600 cursor-pointer\">",
+                    "            </div>",
                     "        </div>",
                     "        <button id=\"menuBtn\" class=\"bg-slate-800 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:bg-slate-900 hover:-translate-y-1 active:translate-y-0 active:scale-90\">",
                     "            <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><line x1=\"3\" y1=\"12\" x2=\"21\" y2=\"12\"></line><line x1=\"3\" y1=\"6\" x2=\"21\" y2=\"6\"></line><line x1=\"3\" y1=\"18\" x2=\"21\" y2=\"18\"></line></svg>",
                     "        </button>",
                     "    </div>",
                     "    <div id=\"mapModal\" class=\"fixed inset-0 bg-slate-900/95 hidden z-[500] flex flex-col p-6 transition-opacity duration-300 opacity-0\">",
-                    "        <div class=\"flex justify-between items-center mb-6\"><h2 class=\"text-2xl font-bold text-white flex items-center gap-3\">Fast Travel Map</h2><button onclick=\"closeMap()\" class=\"text-slate-300 hover:text-white font-bold text-xl\">✕ Close</button></div>",
-                    "        <div class=\"flex-grow w-full relative bg-slate-800 rounded-xl overflow-auto border border-slate-700 p-8 flex flex-wrap gap-12 items-center justify-center content-center\" id=\"mapNodesContainer\"><svg id=\"mapLines\" class=\"absolute inset-0 w-full h-full pointer-events-none\"></svg></div>",
+                    "        <div class=\"flex justify-between items-center mb-6\">",
+                    "            <h2 class=\"text-2xl font-bold text-white flex items-center gap-3\">",
+                    "                <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"28\" height=\"28\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"text-cyan-400\"><polygon points=\"3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21\"></polygon><line x1=\"9\" y1=\"3\" x2=\"9\" y2=\"21\"></line><line x1=\"15\" y1=\"3\" x2=\"15\" y2=\"21\"></line></svg>",
+                    "                Fast Travel Map",
+                    "            </h2>",
+                    "            <button onclick=\"closeMap()\" class=\"text-slate-300 hover:text-white font-bold text-xl\">✕ Close</button>",
+                    "        </div>",
+                    "        <div class=\"flex-grow w-full relative bg-slate-800 rounded-xl overflow-auto border border-slate-700 p-8 flex flex-wrap gap-12 items-center justify-center content-center\" id=\"mapNodesContainer\">",
+                    "            <svg id=\"mapLines\" class=\"absolute inset-0 w-full h-full pointer-events-none\">",
+                    "                <defs>",
+                    "                    <marker id=\"arrow-blue\" viewBox=\"0 0 10 10\" refX=\"22\" refY=\"5\" markerWidth=\"6\" markerHeight=\"6\" orient=\"auto-start-reverse\">",
+                    "                        <path d=\"M 0 0 L 10 5 L 0 10 z\" fill=\"#3b82f6\" />",
+                    "                    </marker>",
+                    "                    <marker id=\"arrow-purple\" viewBox=\"0 0 10 10\" refX=\"22\" refY=\"5\" markerWidth=\"6\" markerHeight=\"6\" orient=\"auto-start-reverse\">",
+                    "                        <path d=\"M 0 0 L 10 5 L 0 10 z\" fill=\"#9333ea\" />",
+                    "                    </marker>",
+                    "                </defs>",
+                    "            </svg>",
+                    "        </div>",
+                    "        <div class=\"mt-4 flex gap-8 text-sm text-slate-300 font-medium justify-center\">",
+                    "            <div class=\"flex items-center gap-2\"><div class=\"w-8 h-1.5 bg-blue-500 rounded\"></div> Portal Connection</div>",
+                    "            <div class=\"flex items-center gap-2\"><div class=\"w-8 h-1.5 border-t-4 border-dashed border-purple-500\"></div> Transit Challenge</div>",
+                    "        </div>",
                     "    </div>",
                     "    <div id=\"popup\" class=\"absolute -translate-x-1/2 bg-white p-6 rounded-xl shadow-2xl hidden w-[90vw] max-w-lg z-[200]\">",
-                    "        <button onclick=\"closeP()\" class=\"absolute top-3 right-3 text-slate-400 hover:text-slate-600 text-xl font-bold z-10\">✕</button><h2 id=\"pTitle\" class=\"font-bold text-2xl mb-3\"></h2>",
-                    "        <div id=\"pImgContainer\" class=\"relative hidden mb-4 group cursor-zoom-in\"><img id=\"pImg\" class=\"w-full h-auto max-h-48 object-cover rounded-md shadow-sm\"></div>",
-                    "        <iframe id=\"pVid\" class=\"w-full aspect-video hidden mb-4 rounded-md shadow-sm\" frameborder=\"0\" allowfullscreen></iframe><p id=\"pDesc\" class=\"text-slate-600 text-base leading-relaxed mb-5\"></p>",
+                    "        <button onclick=\"closeP()\" class=\"absolute top-3 right-3 text-slate-400 hover:text-slate-600 text-xl font-bold z-10\">✕</button>",
+                    "        <h2 id=\"pTitle\" class=\"font-bold text-2xl mb-3\"></h2>",
+                    "        <div id=\"pImgContainer\" class=\"relative hidden mb-4 group cursor-zoom-in\">",
+                    "            <img id=\"pImg\" class=\"w-full h-auto max-h-48 object-cover rounded-md shadow-sm\">",
+                    "            <div class=\"absolute bottom-2 right-2 bg-slate-900/80 text-white text-xs px-2 py-1 rounded backdrop-blur opacity-80 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-none\">🔍 Click to enlarge</div>",
+                    "        </div>",
+                    "        <iframe id=\"pVid\" class=\"w-full aspect-video hidden mb-4 rounded-md shadow-sm\" frameborder=\"0\" allowfullscreen></iframe>",
+                    "        <p id=\"pDesc\" class=\"text-slate-600 text-base leading-relaxed mb-5\"></p>",
                     "        <button id=\"pTransitBtn\" class=\"w-full bg-purple-600 text-white py-3 rounded-lg text-base font-bold mb-2 hidden shadow-sm\">Travel Here</button>",
                     "    </div>",
                     "    <div id=\"pointQuizModal\" class=\"fixed inset-0 bg-slate-900/90 hidden z-[300] flex items-center justify-center p-4\">",
                     "        <div class=\"bg-white rounded-xl p-6 max-w-md w-full border-t-4 border-purple-500\">",
-                    "            <h3 class=\"text-xl font-bold mb-4\">Quiz Point</h3><p id=\"pqText\" class=\"mb-4 text-slate-700\"></p>",
+                    "            <h3 class=\"text-xl font-bold mb-4\">Quiz Point</h3>",
+                    "            <p id=\"pqText\" class=\"mb-4 text-slate-700\"></p>",
                     "            <input type=\"text\" id=\"pqAns\" class=\"w-full border border-slate-300 p-3 rounded-md mb-2 focus:ring-purple-500 focus:border-purple-500 outline-none read-only:bg-slate-100 read-only:text-slate-600 read-only:cursor-not-allowed\">",
                     "            <p id=\"pqError\" class=\"text-red-500 text-sm hidden mb-4\">Incorrect answer. Please try again!</p>",
-                    "            <div class=\"flex justify-end gap-3 mt-4\"><button onclick=\"document.getElementById('pointQuizModal').classList.add('hidden')\" class=\"text-slate-500 hover:bg-slate-100 px-4 py-2 rounded-md transition-colors\">Close</button><button id=\"pqSub\" class=\"bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-md font-bold transition-colors\">Submit</button></div>",
+                    "            <div class=\"flex justify-end gap-3 mt-4\">",
+                    "                <button onclick=\"document.getElementById('pointQuizModal').classList.add('hidden')\" class=\"text-slate-500 hover:bg-slate-100 px-4 py-2 rounded-md transition-colors\">Close</button>",
+                    "                <button id=\"pqSub\" class=\"bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-md font-bold transition-colors\">Submit</button>",
+                    "            </div>",
                     "        </div>",
                     "    </div>",
                     "    <div id=\"lbOverlay\" class=\"fixed inset-0 bg-black/90 z-[999999] flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 cursor-zoom-out\" onclick=\"this.classList.remove('opacity-100', 'pointer-events-auto'); this.classList.add('opacity-0', 'pointer-events-none');\">",
-                    "        <img id=\"lbImg\" class=\"max-w-[95vw] max-h-[95vh] object-contain rounded-lg shadow-2xl\"><div class=\"absolute top-6 right-6 text-white/50 hover:text-white font-bold text-xl transition-colors\">✕ Close</div>",
+                    "        <img id=\"lbImg\" class=\"max-w-[95vw] max-h-[95vh] object-contain rounded-lg shadow-2xl\">",
+                    "        <div class=\"absolute top-6 right-6 text-white/50 hover:text-white font-bold text-xl transition-colors\">✕ Close</div>",
                     "    </div>",
                     "    <div id=\"quiz\" class=\"fixed inset-0 bg-slate-900/90 hidden z-[300] flex items-center justify-center p-4\">",
-                    "        <div class=\"bg-white rounded-xl p-6 max-w-md w-full border-t-4 border-purple-500\"><h3 class=\"text-xl font-bold mb-4\">Challenge</h3><p id=\"qText\" class=\"mb-4\"></p><input type=\"text\" id=\"qAns\" class=\"w-full border p-3 rounded-md mb-2\"><div class=\"flex justify-end gap-3 mt-4\"><button onclick=\"document.getElementById('quiz').classList.add('hidden')\" class=\"text-slate-500\">Cancel</button><button id=\"qSub\" class=\"bg-purple-600 text-white px-6 py-2 rounded-md font-bold\">Submit</button></div></div>",
+                    "        <div class=\"bg-white rounded-xl p-6 max-w-md w-full border-t-4 border-purple-500\">",
+                    "            <h3 class=\"text-xl font-bold mb-4\">Challenge</h3>",
+                    "            <p id=\"qText\" class=\"mb-4\"></p>",
+                    "            <input type=\"text\" id=\"qAns\" class=\"w-full border p-3 rounded-md mb-2\">",
+                    "            <div class=\"flex justify-end gap-3 mt-4\"><button onclick=\"document.getElementById('quiz').classList.add('hidden')\" class=\"text-slate-500\">Cancel</button><button id=\"qSub\" class=\"bg-purple-600 text-white px-6 py-2 rounded-md font-bold\">Submit</button></div>",
+                    "        </div>",
                     "    </div>",
                     "    <script>",
-                    "        const scenes = " + JSON.stringify(exportScenes) + "; const tourIntro = " + JSON.stringify(tourIntro) + "; const tourTimer = " + tourTimer + ";",
-                    "        let cur=0, lon=0, lat=0, unlocked=new Set([0]), scene, camera, renderer, sphere, vis={}, activeP=null, activePointQuizIndex=null, activePointQuizHs=null, tourCompleted=false, bgAudio=new Audio(); bgAudio.loop=true; let initPinchDist=null, initFov=null, startTime=0, timerInterval=null, totalClicks=0, isDragging=false, isD=false, mx, my, mL, mLat, momentum=true, lonVel=0, latVel=0, prevLon=0, prevLat=0;",
-                    "        function unlockScene(i) { if(i===-1||i===undefined||i<0||i>=scenes.length)return false; if(unlocked.has(i))return false; unlocked.add(i); return true; }",
+                    "        const scenes = " + JSON.stringify(exportScenes) + ";",
+                    "        const tourIntro = " + JSON.stringify(tourIntro) + ";",
+                    "        const tourTimer = " + tourTimer + ";",
+                    "        let cur = 0, lon = 0, lat = 0;",
+                    "        let unlocked = new Set([0]);",
+                    "        function unlockScene(i) {",
+                    "            if (i === -1 || i === undefined || i < 0 || i >= scenes.length) return false;",
+                    "            if (unlocked.has(i)) return false;",
+                    "            unlocked.add(i);",
+                    "            return true;",
+                    "        }",
                     "        function isUnlocked(i) { return tourCompleted || unlocked.has(i); }",
-                    "        function getNextVis(startIdx) { for(let i=startIdx+1; i<scenes.length; i++) { if(!scenes[i].isHidden) return i; } return -1; }",
-                    "        function refreshProgressGates() { const s=scenes[cur]; const tc=document.getElementById('transitContainer'); if(!s){tc.classList.add('hidden');return;} const found=vis[cur]?vis[cur].size:0; const done=s.hotspots.length===0||found===s.hotspots.length; if(!done){tc.classList.add('hidden');return;} const nxt=getNextVis(cur); if(s.transitConfig){ if(!tourCompleted&&nxt!==-1&&!unlocked.has(nxt))tc.classList.remove('hidden'); else tc.classList.add('hidden'); }else{ tc.classList.add('hidden'); if(unlockScene(nxt)){renderMenu();showUnlockToast();} } }",
-                    "        function getPtr(e) { if(e.touches&&e.touches.length>0)return{x:e.touches[0].clientX,y:e.touches[0].clientY}; if(e.changedTouches&&e.changedTouches.length>0)return{x:e.changedTouches[0].clientX,y:e.changedTouches[0].clientY}; return{x:e.clientX,y:e.clientY}; }",
-                    "        function checkCompletion() { if(tourCompleted||scenes.length===0)return; let totalH=0,totalV=0; unlocked.forEach(idx=>{ const s=scenes[idx]; if(!s)return; totalH+=s.hotspots.length; if(vis[idx])totalV+=vis[idx].size; }); if(totalH>0&&totalH===totalV){ const s=scenes[cur]; const nxt=getNextVis(cur); if(s.transitConfig&&nxt!==-1&&!unlocked.has(nxt))return; if(!s.transitConfig&&nxt!==-1&&!unlocked.has(nxt))return; let hasUnvisitedPortal=false; s.hotspots.forEach(h=>{ if(h.targetSceneId){ const tIdx=scenes.findIndex(sc=>sc.id===h.targetSceneId); if(tIdx!==-1&&!unlocked.has(tIdx))hasUnvisitedPortal=true; } }); if(hasUnvisitedPortal)return; tourCompleted=true; if(timerInterval)clearInterval(timerInterval); let elapsed=Date.now()-startTime; let totalSecs=Math.floor(elapsed/1000); let mins=Math.floor(totalSecs/60); let secs=totalSecs%60; if(tourTimer===0) document.getElementById('timeText').textContent=`${mins}:${secs.toString().padStart(2,'0')}`; let acc=totalClicks>0?Math.round((totalH/totalClicks)*100):100; if(acc>100)acc=100; document.getElementById('accuracyText').textContent=acc+'%'; document.getElementById('accuracyContainer').classList.remove('hidden'); const td=document.getElementById('timerDisplay'); td.classList.remove('hidden'); td.classList.add('bg-emerald-600','border-emerald-500','border-2'); td.classList.remove('bg-slate-900/80'); scenes[cur].hotspots.forEach((h,i)=>{ const div=document.getElementById('h'+i); if(div){ div.classList.remove('hidden-hotspot'); div.innerHTML=h.type==='quiz'?'✓':(h.isGatekeeper?'★':'i'); div.style.width='44px'; div.style.height='44px'; div.style.display='flex'; } }); document.getElementById('progressHud').classList.add('hidden'); document.getElementById('finishJourneyBtn').classList.remove('hidden'); } }",
-                    "        document.getElementById('finishJourneyBtn').onclick=()=>{ document.getElementById('finishJourneyBtn').classList.add('hidden'); let elapsed=Date.now()-startTime; let totalSecs=Math.floor(elapsed/1000); let mins=Math.floor(totalSecs/60); let secs=totalSecs%60; let timeString=tourTimer>0?`You finished with ${document.getElementById('timeText').textContent} remaining!`:`You completed the journey in ${mins}m ${secs}s!`; document.getElementById('completionTimeText').textContent=timeString; const btn=document.getElementById('openMapMenuBtn'); if(btn){ btn.innerHTML='🗺️ Fast Travel Map'; btn.className='w-full text-left p-2 rounded bg-amber-100 font-bold text-amber-800 hover:bg-amber-200 mt-2 transition-colors'; btn.onclick=()=>{ const pnl=document.getElementById('menuPanel'); if(pnl)pnl.classList.add('hidden'); openMap(); }; } scenes.forEach((s,i)=>unlockScene(i)); renderMenu(); const over=document.getElementById('completeOverlay'); if(over){ over.classList.remove('hidden'); setTimeout(()=>over.classList.remove('opacity-0'),50); } };",
-                    "        function startTimer() { if(timerInterval)clearInterval(timerInterval); startTime=Date.now(); if(tourTimer>0){ document.getElementById('timerDisplay').classList.remove('hidden'); timerInterval=setInterval(()=>{ let elapsed=Date.now()-startTime; let remaining=(tourTimer*60000)-elapsed; if(remaining<=0){ clearInterval(timerInterval); remaining=0; handleTimeUp(); } let totalSecs=Math.floor(remaining/1000); let mins=Math.floor(totalSecs/60); let secs=totalSecs%60; document.getElementById('timeText').textContent=`${mins}:${secs.toString().padStart(2,'0')}`; },1000); } }",
-                    "        function handleTimeUp() { document.getElementById('fadeOverlay').classList.remove('opacity-0','pointer-events-none'); document.getElementById('fadeOverlay').classList.add('opacity-100','pointer-events-auto'); let unlockedHtml=''; scenes.forEach((s,i)=>{ if(vis[i]&&s.hotspots.length>0&&vis[i].size===s.hotspots.length) unlockedHtml+=`<li>✅ ${s.title}</li>`; }); document.getElementById('timeoutReport').innerHTML=unlockedHtml||'<li>No scenes fully explored.</li>'; const to=document.getElementById('timeoutOverlay'); to.classList.remove('hidden'); setTimeout(()=>to.classList.remove('opacity-0'),50); }",
-                    "        function showUnlockToast() { const t=document.getElementById('unlockToast'); if(t){ t.classList.remove('opacity-0', '-translate-y-4'); setTimeout(()=>t.classList.add('opacity-0', '-translate-y-4'),3000); } }",
-                    "        function updateHud() { const h=document.getElementById('progressHud'); const s=scenes[cur]; if(tourCompleted||!s||!s.hotspots||s.hotspots.length===0){h.classList.add('hidden');return;} h.classList.remove('hidden','hud-complete','bg-emerald-600','border-emerald-500'); h.classList.add('bg-slate-900/80','border-slate-700'); const discovered=vis[cur]?vis[cur].size:0; document.getElementById('pCount').textContent=discovered; document.getElementById('pTotal').textContent=s.hotspots.length; if(discovered===s.hotspots.length){ h.classList.remove('bg-slate-900/80','border-slate-700'); h.classList.add('bg-emerald-600','border-emerald-500','hud-complete'); document.getElementById('pCount').className='text-white'; } else { document.getElementById('pCount').className='text-indigo-300'; } }",
-                    "        function showError(msg) { document.getElementById('loadingContent').classList.add('hidden'); const eBox=document.getElementById('errorBox'); eBox.querySelector('p').textContent=msg; eBox.classList.remove('hidden'); }",
-                    "        function init() { scene=new THREE.Scene(); camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,1,1100); renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setSize(window.innerWidth,window.innerHeight); document.getElementById('container').appendChild(renderer.domElement); const geo=new THREE.SphereGeometry(500,60,40); geo.scale(-1,1,1); sphere=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({side:THREE.DoubleSide})); scene.add(sphere); window.onresize=()=>{camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight);}; const start=(e)=>{isD=true; isDragging=false; const p=getPtr(e); mx=p.x; my=p.y; mL=lon; mLat=lat;}; const move=(e)=>{ if(e.touches&&e.touches.length===2){ if(e.cancelable)e.preventDefault(); const dx=e.touches[0].clientX-e.touches[1].clientX; const dy=e.touches[0].clientY-e.touches[1].clientY; const dist=Math.sqrt(dx*dx+dy*dy); if(initPinchDist===null){ initPinchDist=dist; initFov=camera.fov; }else{ camera.fov=Math.max(20,Math.min(100,initFov*(initPinchDist/dist))); camera.updateProjectionMatrix(); } return; } if(!isD)return; if(e.cancelable)e.preventDefault(); const p=getPtr(e); lon=(mx-p.x)*0.1+mL; lat=(p.y-my)*0.1+mLat; if(Math.abs(p.x-mx)>10||Math.abs(p.y-my)>10)isDragging=true; }; const up=()=>{ if(isD&&!isDragging&&!tourCompleted){ if(document.getElementById('introOverlay').classList.contains('hidden')) totalClicks++; } isD=false; initPinchDist=null; }; document.addEventListener('mousedown',start); document.addEventListener('mousemove',move); document.addEventListener('mouseup',up); document.addEventListener('touchstart',start,{passive:false}); document.addEventListener('touchmove',move,{passive:false}); document.addEventListener('touchend',up); document.addEventListener('wheel',(e)=>{e.preventDefault(); camera.fov=Math.max(20,Math.min(100,camera.fov+e.deltaY*0.05)); camera.updateProjectionMatrix();},{passive:false}); document.getElementById('zIn').onclick=()=>{camera.fov=Math.max(20,camera.fov-10); camera.updateProjectionMatrix();}; document.getElementById('zOut').onclick=()=>{camera.fov=Math.min(100,camera.fov+10); camera.updateProjectionMatrix();}; if(tourIntro&&tourIntro.title){ document.getElementById('introTitleText').textContent=tourIntro.title; document.getElementById('introDescText').textContent=tourIntro.desc; document.getElementById('startJourneyBtn').onclick=()=>{ const overlay=document.getElementById('introOverlay'); overlay.classList.add('opacity-0'); setTimeout(()=>overlay.classList.add('hidden'),500); startTimer(); if(bgAudio.src&&bgAudio.src!==window.location.href) bgAudio.play().catch(e=>console.log(e)); }; }else{ document.getElementById('introOverlay').classList.add('hidden'); startTimer(); } load(0); animate(); }",
-                    "        function load(idx) { const s=scenes[idx]; if(!s){showError(\"No valid scene found.\");return;} cur=idx; bgAudio.pause(); if(s.audioSrc){ bgAudio.src=s.audioSrc; if(document.getElementById('introOverlay').classList.contains('hidden')) bgAudio.play().catch(e=>console.log(e)); }else{ bgAudio.src=''; } if(!vis[cur])vis[cur]=new Set(); document.getElementById('loadingOverlay').classList.remove('opacity-0','pointer-events-none'); document.getElementById('loadingOverlay').classList.add('opacity-100','pointer-events-auto'); document.getElementById('loadingContent').classList.remove('hidden'); document.getElementById('errorBox').classList.add('hidden'); const loadTexture=(url,isFallback=false)=>{ const loader=new THREE.TextureLoader(); if(!url.startsWith('blob:')&&!url.startsWith('data:'))loader.setCrossOrigin('anonymous'); loader.load(url,(t)=>{ sphere.material.map=t; sphere.material.needsUpdate=true; setTimeout(()=>{ document.getElementById('loadingOverlay').classList.remove('opacity-100','pointer-events-auto'); document.getElementById('loadingOverlay').classList.add('opacity-0','pointer-events-none'); const fade=document.getElementById('fadeOverlay'); if(fade){ fade.classList.remove('opacity-100','pointer-events-auto'); fade.classList.add('opacity-0','pointer-events-none'); } },250); },undefined,(err)=>{ if(!isFallback&&!url.startsWith('blob:')&&!url.startsWith('data:')){ loadTexture('https://corsproxy.io/?'+encodeURIComponent(url),true); }else{ document.getElementById('loadingContent').classList.add('hidden'); document.getElementById('errorBox').classList.remove('hidden'); } }); }; loadTexture(s.imageSrc); const hasUnclickedGatekeeper=s.hotspots.some((h,i)=>h.isGatekeeper&&!vis[cur].has(i)); document.getElementById('overlay').innerHTML=''; document.getElementById('transitContainer').classList.add('hidden'); closeP(); s.hotspots.forEach((h,i)=>{ const div=document.createElement('div'); const isHiddenNow=h.isHidden&&!tourCompleted&&!vis[cur].has(i); let baseClass='hotspot'; if(h.isGatekeeper)baseClass+=' gatekeeper'; if(isHiddenNow)baseClass+=' hidden-hotspot'; div.className=baseClass; div.id='h'+i; div.innerHTML=h.type==='quiz'?'?':(h.isGatekeeper?'★':'i'); div.style.pointerEvents='auto'; let sizeMult=h.hiddenSize||1; let dim=44; if(isHiddenNow)dim=44*sizeMult; div.style.width=dim+'px'; div.style.height=dim+'px'; if(vis[cur].has(i)){ div.classList.add('visited'); if(h.isHidden)div.classList.add('ghost-marker'); div.innerHTML=h.type==='quiz'?'✓':(h.isGatekeeper?'★':'i'); } div.onclick=(e)=>{ e.stopPropagation(); let isVisited=vis[cur].has(i); let isQuiz=h.type==='quiz'; if(!tourCompleted&&!isVisited){ if(isQuiz){ activePointQuizIndex=i; activePointQuizHs=h; document.getElementById('pqText').textContent=h.quizQuestion; document.getElementById('pqAns').value=''; document.getElementById('pqAns').readOnly=false; document.getElementById('pqError').classList.add('hidden'); document.getElementById('pqSub').style.display='inline-block'; document.getElementById('pointQuizModal').classList.remove('hidden'); return; } processHotspotDiscovery(h,i); }else if(isQuiz){ document.getElementById('pqText').textContent=h.quizQuestion; document.getElementById('pqAns').value=h.quizAnswer; document.getElementById('pqAns').readOnly=true; document.getElementById('pqError').classList.add('hidden'); document.getElementById('pqSub').style.display='none'; document.getElementById('pointQuizModal').classList.remove('hidden'); }else{ showP(h,i); } }; document.getElementById('overlay').appendChild(div); }); renderMenu(); updateHud(); refreshProgressGates(); }",
-                    "        function processHotspotDiscovery(hs,idx) { if(!tourCompleted)totalClicks++; vis[cur].add(idx); const s=scenes[cur]; if(hs.isGatekeeper){ const newHasGatekeeper=s.hotspots.some((h2,i2)=>h2.isGatekeeper&&!vis[cur].has(i2)); s.hotspots.forEach((h2,i2)=>{ const m2=document.getElementById('h'+i2); if(m2&&!newHasGatekeeper&&!h2.isGatekeeper)m2.style.display='flex'; }); } const marker=document.getElementById('h'+idx); if(marker){ marker.style.width='44px'; marker.style.height='44px'; marker.classList.add('visited'); if(hs.isHidden)marker.classList.add('ghost-marker'); marker.classList.remove('opacity-0','hover:opacity-30','bg-white','text-transparent','hover:text-slate-800'); marker.innerHTML=hs.type==='quiz'?'✓':(hs.isGatekeeper?'★':'i'); } updateHud(); if(hs.type!=='quiz')showP(hs,idx); refreshProgressGates(); checkCompletion(); }",
-                    "        document.getElementById('pqSub').onclick=()=>{ if(activePointQuizIndex===null)return; const ans=document.getElementById('pqAns').value.trim().toLowerCase(); if(ans===activePointQuizHs.quizAnswer.toLowerCase()){ document.getElementById('pointQuizModal').classList.add('hidden'); processHotspotDiscovery(activePointQuizHs,activePointQuizIndex); activePointQuizIndex=null; activePointQuizHs=null; }else{ document.getElementById('pqError').classList.remove('hidden'); } };",
-                    "        function getEmbedUrl(url) { if(!url)return null; if(url.includes('youtube.com/watch?v='))return 'https://www.youtube.com/embed/'+url.split('v=')[1].split('&')[0]; if(url.includes('youtu.be/'))return 'https://www.youtube.com/embed/'+url.split('youtu.be/')[1].split('?')[0]; return null; }",
-                    "        function showP(h,idx) { activeP=idx; document.getElementById('pTitle').textContent=h.title||''; document.getElementById('pDesc').textContent=h.desc||''; const vid=document.getElementById('pVid'); const embed=getEmbedUrl(h.videoUrl); if(embed){vid.src=embed;vid.classList.remove('hidden');}else{vid.removeAttribute('src');vid.classList.add('hidden');} const imgContainer=document.getElementById('pImgContainer'); const img=document.getElementById('pImg'); if(h.imageUrl){ img.src=h.imageUrl; imgContainer.classList.remove('hidden'); imgContainer.onclick=()=>{ const lb=document.getElementById('lbOverlay'); document.getElementById('lbImg').src=h.imageUrl; lb.classList.remove('opacity-0','pointer-events-none'); lb.classList.add('opacity-100','pointer-events-auto'); }; }else{ img.removeAttribute('src'); imgContainer.classList.add('hidden'); imgContainer.onclick=null; } const tBtn=document.getElementById('pTransitBtn'); if(h.targetSceneId){ const targetIdx=scenes.findIndex(s=>s.id===h.targetSceneId); if(targetIdx!==-1){ tBtn.textContent='Travel to: '+scenes[targetIdx].title; tBtn.classList.remove('hidden'); tBtn.onclick=()=>{ closeP(); const overlay=document.getElementById('fadeOverlay'); overlay.classList.remove('opacity-0','pointer-events-none'); overlay.classList.add('opacity-100','pointer-events-auto'); const origFov=camera.fov; let zFrame; const zStep=()=>{camera.fov-=(camera.fov-20)*0.1; camera.updateProjectionMatrix(); zFrame=requestAnimationFrame(zStep);}; zFrame=requestAnimationFrame(zStep); setTimeout(()=>{cancelAnimationFrame(zFrame); camera.fov=origFov; camera.updateProjectionMatrix(); unlockScene(targetIdx); load(targetIdx);},500); }; }else tBtn.classList.add('hidden'); }else tBtn.classList.add('hidden'); document.getElementById('popup').classList.remove('hidden'); }",
-                    "        function closeP() { activeP=null; const p=document.getElementById('popup'); p.style.visibility=''; p.classList.add('hidden'); setTimeout(()=>{document.getElementById('pVid').removeAttribute('src'); document.getElementById('pImg').removeAttribute('src');},200); const lb=document.getElementById('lbOverlay'); if(lb){lb.classList.remove('opacity-100','pointer-events-auto'); lb.classList.add('opacity-0','pointer-events-none');} }",
-                    "        function drawSVGLine(svg,x1,y1,x2,y2,color,dashed) { const path=document.createElementNS('http://www.w3.org/2000/svg','path'); const dx=x2-x1, dy=y2-y1, cx=x1+dx/2-dy*0.15, cy=y1+dy/2+dx*0.15; path.setAttribute('d',`M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`); path.setAttribute('stroke',color); path.setAttribute('stroke-width','4'); path.setAttribute('fill','none'); if(dashed)path.setAttribute('stroke-dasharray','8,8'); const cName=color==='#3b82f6'?'blue':'purple'; path.setAttribute('marker-end',`url(#arrow-${cName})`); svg.appendChild(path); }",
-                    "        function openMap() { const m=document.getElementById('mapModal'); m.classList.remove('hidden'); setTimeout(()=>m.classList.remove('opacity-0'),10); const cont=document.getElementById('mapNodesContainer'); const svg=document.getElementById('mapLines'); Array.from(svg.querySelectorAll('path')).forEach(p=>p.remove()); Array.from(cont.children).forEach(c=>{if(c.tagName!=='svg'&&c.tagName!=='SVG')c.remove();}); const els={}; scenes.forEach((s,i)=>{ const b=document.createElement('button'); b.className='relative z-10 px-5 py-3 rounded-xl font-bold shadow-xl border-2 transition-transform hover:scale-105 '+(i===cur?'bg-indigo-600 text-white border-indigo-700':'bg-white text-slate-800 border-slate-200'); b.textContent=s.title+(s.isHidden?' 🤫':''); b.onclick=()=>{closeMap(); unlockScene(i); load(i);}; cont.appendChild(b); els[s.id]=b; }); setTimeout(()=>{ const sR=svg.getBoundingClientRect(); scenes.forEach((s,i)=>{ const f=els[s.id]; if(!f)return; const fR=f.getBoundingClientRect(); const fx=fR.left+fR.width/2-sR.left, fy=fR.top+fR.height/2-sR.top; s.hotspots.forEach(h=>{ if(h.targetSceneId&&els[h.targetSceneId]){ const t=els[h.targetSceneId]; const tR=t.getBoundingClientRect(); const tx=tR.left+tR.width/2-sR.left, ty=tR.top+tR.height/2-sR.top; drawSVGLine(svg,fx,fy,tx,ty,'#3b82f6',false); } }); if(s.transitConfig&&i<scenes.length-1){ const t=els[scenes[i+1].id]; if(t){ const tR=t.getBoundingClientRect(); const tx=tR.left+tR.width/2-sR.left, ty=tR.top+tR.height/2-sR.top; drawSVGLine(svg,fx,fy,tx,ty,'#9333ea',true); } } }); },50); }",
-                    "        function closeMap() { const m=document.getElementById('mapModal'); m.classList.add('opacity-0'); setTimeout(()=>m.classList.add('hidden'),300); }",
-                    "        function renderMenu() { const links=document.getElementById('sceneLinks'); links.innerHTML=''; scenes.forEach((s,i)=>{ if(s.isHidden&&!tourCompleted)return; const b=document.createElement('button'); b.className='w-full text-left p-2 rounded '+(i===cur?'bg-indigo-50 font-bold':(isUnlocked(i)?'hover:bg-slate-100':'opacity-50')); b.textContent=(i+1)+'. '+s.title+(s.isHidden?' 🤫':''); if(isUnlocked(i))b.onclick=()=>{load(i); document.getElementById('menuPanel').classList.add('hidden');}; links.appendChild(b); }); }",
-                    "        document.getElementById('menuBtn').onclick=()=>document.getElementById('menuPanel').classList.toggle('hidden');",
-                    "        document.getElementById('expMomentumToggle').onchange=(e)=>momentum=e.target.checked;",
-                    "        document.getElementById('expAudioToggle').onchange=(e)=>bgAudio.muted=!e.target.checked;",
-                    "        document.getElementById('transitTrigger').onclick=()=>{ const s=scenes[cur]; if(s.transitConfig){ document.getElementById('qText').textContent=s.transitConfig.question; document.getElementById('qAns').value=''; const err=document.getElementById('qError'); if(err)err.textContent=''; document.getElementById('quiz').classList.remove('hidden'); } };",
-                    "        document.getElementById('qSub').onclick=()=>{ const s=scenes[cur]; if(document.getElementById('qAns').value.trim().toLowerCase()===s.transitConfig.answer.toLowerCase()){ document.getElementById('quiz').classList.add('hidden'); document.getElementById('transitContainer').classList.add('hidden'); const nxt=getNextVis(cur); if(nxt!==-1){ const overlay=document.getElementById('fadeOverlay'); overlay.classList.remove('opacity-0','pointer-events-none'); overlay.classList.add('opacity-100','pointer-events-auto'); const origFov=camera.fov; let zFrame; const zStep=()=>{camera.fov-=(camera.fov-20)*0.1; camera.updateProjectionMatrix(); zFrame=requestAnimationFrame(zStep);}; zFrame=requestAnimationFrame(zStep); setTimeout(()=>{ cancelAnimationFrame(zFrame); camera.fov=origFov; camera.updateProjectionMatrix(); unlockScene(nxt); load(nxt); },500); } checkCompletion(); }else{ let errEl=document.getElementById('qError'); if(!errEl){ errEl=document.createElement('p'); errEl.id='qError'; errEl.className='text-red-500 text-sm mt-1'; document.getElementById('qAns').after(errEl); } errEl.textContent='Incorrect answer. Please try again!'; } };",
-                    "        function animate() { requestAnimationFrame(animate); if(isD){lonVel=lon-prevLon;latVel=lat-prevLat;}else if(momentum){lon+=lonVel;lat+=latVel;lonVel*=0.92;latVel*=0.92;} lat=Math.max(-85,Math.min(85,lat)); if(lat===85||lat===-85)latVel=0; prevLon=lon;prevLat=lat; const phi=THREE.MathUtils.degToRad(90-lat), theta=THREE.MathUtils.degToRad(lon); camera.lookAt(new THREE.Vector3(500*Math.sin(phi)*Math.cos(theta),500*Math.cos(phi),500*Math.sin(phi)*Math.sin(theta))); renderer.render(scene,camera); const s=scenes[cur]; if(s&&s.hotspots){ const hasUnclickedGatekeeper=!tourCompleted&&s.hotspots.some((h,i)=>h.isGatekeeper&&!vis[cur].has(i)); s.hotspots.forEach((h,i)=>{ const div=document.getElementById('h'+i); if(!div)return; const v=new THREE.Vector3(h.pos.x,h.pos.y,h.pos.z).project(camera); if(v.z<1){ if(hasUnclickedGatekeeper&&!h.isGatekeeper){div.style.display='none';}else{div.style.left=(v.x*0.5+0.5)*window.innerWidth+'px'; div.style.top=(v.y*-0.5+0.5)*window.innerHeight+'px'; div.style.display='flex';} }else div.style.display='none'; }); } if(activeP!==null){ const p=document.getElementById('popup'); const m=document.getElementById('h'+activeP); if(m&&m.style.display!=='none'){ p.style.left=m.style.left; p.style.top=(parseFloat(m.style.top)-p.offsetHeight-15)+'px'; p.style.visibility='visible'; }else{ p.style.visibility='hidden'; } } } init();",
-                    "    <" + "/script>",
-                    "</body>",
-                    "</html>"
-                ];
-
-                const exportHtml = exportHtmlLines.join('\n');
-
-                const blob = new Blob([exportHtml], { type: 'text/html' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = finalFileName;
-                a.click();
-                setTimeout(() => URL.revokeObjectURL(url), 1000);
-            });
-        };
-
-        // --- Gemini AI Features ---
-        document.getElementById('aiHotspotBtn').onclick = async () => {
-            const title = document.getElementById('hsTitle').value.trim();
-            const s = scenes.find(sc => sc.id === activeSceneId);
-            const sceneTitle = s ? s.title : "a virtual tour";
-
-            if (!title) {
-                setStatus("Please enter a Title first so I know what to write about!", "error");
-                document.getElementById('hsTitle').classList.add('border-red-500');
-                return;
-            }
-            document.getElementById('hsTitle').classList.remove('border-red-500');
-
-            setStatus("✨ AI is writing a description...", "info");
-            document.getElementById('hsDesc').value = "Generating...";
-
-            const prompt = "Write a short, engaging 2-sentence educational description for a virtual tour hotspot about \"" + title + "\" within the scene \"" + sceneTitle + "\". Keep it suitable for students viewing a 360 tour. Don't use quotes around the output.";
-            const text = await callGemini(prompt);
-
-            if (text) {
-                document.getElementById('hsDesc').value = text;
-                setStatus("✨ Description generated!", "success");
-                autoSave();
-            } else {
-                document.getElementById('hsDesc').value = "";
-                setStatus("Failed to generate content. Check console or try again.", "error");
-            }
-        };
-
-        document.getElementById('aiPointQuizBtn').onclick = async (e) => {
-            e.preventDefault();
-            const title = document.getElementById('hsTitle').value.trim();
-            
-            if (!title) {
-                setStatus("Please enter a Title first so I know what to write a question about!", "error");
-                document.getElementById('hsTitle').classList.add('border-red-500');
-                return;
-            }
-            document.getElementById('hsTitle').classList.remove('border-red-500');
-
-            setStatus("✨ AI is generating a question...", "info");
-            
-            const prompt = "Generate a single, simple educational trivia question about \"" + title + "\" suitable for students. The answer MUST be 1 to 3 words maximum. Return ONLY a valid JSON object: {\"question\": \"...\", \"answer\": \"...\"}";
-            
-            const result = await callGemini(prompt, true);
-            if (result && result.question && result.answer) {
-                document.getElementById('hsQuizQuestion').value = result.question;
-                document.getElementById('hsQuizAnswer').value = result.answer;
-                setStatus("✨ Question generated!", "success");
-            } else {
-                setStatus("Failed to generate question. Try again.", "error");
-            }
-        };
-
-        document.getElementById('aiQuizBtn').onclick = async () => {
-            const s = scenes.find(sc => sc.id === activeSceneId);
-            if (!s || !s.hotspots || s.hotspots.length === 0) {
-                setStatus("Add some hotspots first so the AI has context for the quiz!", "error");
-                return;
-            }
-
-            setStatus("✨ AI is generating a challenge...", "info");
-
-            const contextData = s.hotspots.map(h => h.title + ": " + (h.desc || h.quizQuestion || "Hidden Point")).join("\n");
-            const prompt = "Based on the following information found in a virtual tour scene:\n" + contextData + "\n\nGenerate a single, simple trivia question for students to answer before they can proceed. The answer MUST be 1 to 3 words maximum.\n\nReturn ONLY a valid JSON object matching this schema exactly:\n{\n  \"question\": \"The trivia question here\",\n  \"answer\": \"The short answer here\"\n}";
-
-            const result = await callGemini(prompt, true);
-            if (result && result.question && result.answer) {
-                document.getElementById('configTransitQuestion').value = result.question;
-                document.getElementById('configTransitAnswer').value = result.answer;
-                setStatus("✨ Challenge generated based on your hotspots!", "success");
-            } else {
-                setStatus("Failed to generate challenge. Try again.", "error");
-            }
-        };
-
-        initThree();
-        showView('login');
-    </script>
-</body>
-</html>
+                    "        let scene, camera, renderer, sphere;",
+                    "        let vis = {};",
+                    "        let activeP = null;",
+                    "        let activePointQuizIndex = null;",
+                    "        let activePointQuizHs = null;",
+                    "        let tourCompleted = false;",
+                    "        let bgAudio = new Audio();",
+                    "        bgAudio.loop = true;",
+                    "        let initPinchDist = null, initFov = null;",
+                    "        let startTime = 0;",
+                    "        let timerInterval = null;",
+                    "        let totalClicks = 0;",
+                    "        let isDragging = false;",
+                    "        let isD = false, mx, my, mL, mLat;",
+                    "        let momentum = true, lonVel = 0, latVel = 0, prevLon = 0, prevLat = 0;",
+                    "        function getNextVis(startIdx) {",
+                    "            for(let i = startIdx + 1; i < scenes.length; i++) {",
+                    "                if(!scenes[i].isHidden) return i;",
+                    "            }",
+                    "            return -1;",
+                    "        }",
+                    "        function refreshProgressGates() {",
+                    "            const s = scenes[cur];",
+                    "            const tc = document.getElementById('transitContainer');",
+                    "            if (!s) { tc.classList.add('hidden'); return; }",
+                    "            const found = vis[cur] ? vis[cur].size : 0;",
+                    "            const done = s.hotspots.length === 0 || found === s.hotspots.length;",
+                    "            if (!done) { tc.classList.add('hidden'); return; }",
+                    "            const nxt = getNextVis(cur);",
+                    "            if (s.transitConfig) {",
+                    "                if (!tourCompleted && nxt !== -1 && !unlocked.has(nxt)) tc.classList.remove('hidden');",
+                    "                else tc.classList.add('hidden');",
+                    "            } else {",
+                    "                tc.classList.add('hidden');",
+                    "                if (unlockScene(nxt)) { renderMenu(); showUnlockToast(); }",
+                    "            }",
+                    "        }",
+                    "        function getPtr(e) {",
+                    "            if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };",
+                    "            if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };",
+                    "            return { x: e.clientX, y: e.clientY };",
+                    "        }",
+                    "        function getReachableIndices() {",
+                    "            const reachable = new Set();",
+                    "            if (scenes.length === 0) return reachable;",
+                    "            const stack = [0];",
+                    "            while (stack.length > 0) {",
+                    "                const i = stack.pop();",
+                    "                if (i === -1 || reachable.has(i)) continue;",
+                    "                reachable.add(i);",
+                    "                const s = scenes[i];",
+                    "                if (!s) continue;",
+                    "                const nxt = getNextVis(i);",
+                    "                if (nxt !== -1 && !reachable.has(nxt)) stack.push(nxt);",
+                    "                s.hotspots.forEach(h => {",
+                    "                    if (!h.targetSceneId) return;",
+                    "                    const t = scenes.findIndex(sc => sc.id === h.targetSceneId);",
+                    "                    if (t !== -1 && !reachable.has(t)) stack.push(t);",
+                    "                });",
+                    "            }",
+                    "            return reachable;",
+                    "        }",
+                    "        function checkCompletion() {",
+                    "            if (tourCompleted || scenes.length === 0) return;",
+                    "            let totalH = 0, totalV = 0;",
+                    "            getReachableIndices().forEach(idx => {",
+                    "                if (!scenes[idx]) return;",
+                    "                totalH += scenes[idx].hotspots.length;",
+                    "                if (vis[idx]) totalV += vis[idx].size;",
+                    "            });",
+                    "            if (totalH > 0 && totalH === totalV) {",
+                    "                tourCompleted = true;",
+                    "                if(timerInterval) clearInterval(timerInterval);",
+                    "                let elapsed = Date.now() - startTime;",
+                    "                let totalSecs = Math.floor(elapsed / 1000);",
+                    "                let mins = Math.floor(totalSecs / 60);",
+                    "                let secs = totalSecs % 60;",
+                    "                if (tourTimer === 0) {",
+                    "                    document.getElementById('timeText').textContent = mins + ':' + secs.toString().padStart(2, '0');",
+                    "                }",
+                    "                let acc = totalClicks > 0 ? Math.round((totalH / totalClicks) * 100) : 100;",
+                    "                if (acc > 100) acc = 100;",
+                    "                document.getElementById('accuracyText').textContent = acc + '%';",
+                    "                document.getElementById('accuracyContainer').classList.remove('hidden');",
+                    "                const td = document.getElementById('timerDisplay');",
+                    "                td.classList.remove('hidden');",
+                    "                td.classList.add('bg-emerald-600', 'border-emerald-500', 'border-2');",
+                    "                td.classList.remove('bg-slate-900/80');",
+                    "                scenes[cur].hotspots.forEach((h, i) => {",
+                    "                    const div = document.getElementById('h'+i);",
+                    "                    if (div) {",
+                    "                        div.classList.remove('hidden-hotspot');",
+                    "                        div.innerHTML = h.type === 'quiz' ? '✓' : (h.isGatekeeper ? '★' : (h.isHidden ? '?' : 'i'));",
+                    "                        div.style.width = '44px';",
+                    "                        div.style.height = '44px';",
+                    "                        div.style.display = 'flex'; ",
+                    "                    }",
+                    "                });",
+                    "                document.getElementById('progressHud').classList.add('hidden');",
+                    "                document.getElementById('finishJourneyBtn').classList.remove('hidden');",
+                    "            }",
+                    "        }",
+                    "        document.getElementById('finishJourneyBtn').onclick = () => {",
+                    "            document.getElementById('finishJourneyBtn').classList.add('hidden');",
+                    "            let elapsed = Date.now() - startTime;",
+                    "            let totalSecs = Math.floor(elapsed / 1000);",
+                    "            let mins = Math.floor(totalSecs / 60);",
+                    "            let secs = totalSecs % 60;",
+                    "            let timeString = tourTimer > 0",
+                    "                I seem to be encountering an error. Can I try something else for you?
