@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -987,8 +988,8 @@
             if (scenes.length === 0) return reachable;
 
             const nextVisible = (i) => {
-                for (let j = i + 1; j < scenes.length; j++) if (!scenes[j].isHidden) return j;
-                return -1;
+                // "Hidden" only affects the scene list menu, not the tour sequence.
+                return (i + 1 < scenes.length) ? i + 1 : -1;
             };
 
             const stack = [0];
@@ -1270,6 +1271,26 @@
                     });
                 };
 
+                const hubBtn = document.createElement('button');
+                hubBtn.className = "p-1 " + (s.isBranchHub ? 'text-amber-500 hover:text-amber-700' : 'text-slate-300 hover:text-slate-500');
+                hubBtn.title = s.isBranchHub ? "Branch Hub: locks scenes 1.." + i + " out of the menu from here onward" : "Mark as Branch Hub (locks earlier scenes out of the menu once reached)";
+                hubBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>';
+                hubBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    s.isBranchHub = !s.isBranchHub;
+                    renderFloatingMenu();
+                };
+
+                const branchEndBtn = document.createElement('button');
+                branchEndBtn.className = "p-1 " + (s.isBranchEnd ? 'text-rose-500 hover:text-rose-700' : 'text-slate-300 hover:text-slate-500');
+                branchEndBtn.title = s.isBranchEnd ? "Branch End: won't auto-unlock the next scene when finished" : "Mark as Branch End (stops this scene from auto-unlocking the next one)";
+                branchEndBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>';
+                branchEndBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    s.isBranchEnd = !s.isBranchEnd;
+                    renderFloatingMenu();
+                };
+
                 const hideBtn = document.createElement('button');
                 hideBtn.className = "p-1 " + (s.isHidden ? 'text-slate-400' : 'text-indigo-500 hover:text-indigo-700');
                 hideBtn.title = s.isHidden ? "Scene is hidden from menu" : "Scene is visible in menu";
@@ -1298,6 +1319,8 @@
                 };
 
                 actionsDiv.appendChild(renameBtn);
+                actionsDiv.appendChild(hubBtn);
+                actionsDiv.appendChild(branchEndBtn);
                 actionsDiv.appendChild(hideBtn);
                 actionsDiv.appendChild(delBtn);
                 div.appendChild(actionsDiv);
@@ -1802,7 +1825,7 @@
             customPrompt("Enter Scene Name:", "Scene " + (scenes.length + 1), (name) => {
                 if (!name || !name.trim()) return;
                 const id = 's' + Date.now();
-                scenes.push({ id, title: name.trim(), imageSrc: null, localImageSrc: null, audioSrc: null, localAudioSrc: null, hotspots: [], transitConfig: null, isHidden: false });
+                scenes.push({ id, title: name.trim(), imageSrc: null, localImageSrc: null, audioSrc: null, localAudioSrc: null, hotspots: [], transitConfig: null, isHidden: false, isBranchHub: false, isBranchEnd: false });
                 switchScene(id);
                 fabPanel.classList.add('hidden');
             });
@@ -2236,10 +2259,8 @@
                 checkBuilderCompletion();
                 
                 const currIdx = scenes.findIndex(sc => sc.id === activeSceneId);
-                let nxtId = null;
-                for(let i = currIdx + 1; i < scenes.length; i++) {
-                    if(!scenes[i].isHidden) { nxtId = scenes[i].id; break; }
-                }
+                // "Hidden" only affects the scene list menu, not the tour sequence.
+                let nxtId = (currIdx + 1 < scenes.length) ? scenes[currIdx + 1].id : null;
                 
                 if(nxtId) {
                     const overlay = document.getElementById('transitionOverlay');
@@ -2390,6 +2411,9 @@
                     "        .hidden-hotspot { background: transparent !important; border-color: transparent !important; color: transparent !important; box-shadow: none !important; transition: all 0.3s; }",
                     "        .hidden-hotspot:hover { background: rgba(255,255,255,0.2) !important; border-color: rgba(255,255,255,0.4) !important; color: white !important; }",
                     "        .gatekeeper { background: #f59e0b !important; border-color: #fff !important; color: white !important; }",
+                    "        .gatekeeper.hidden-hotspot { background: transparent !important; border-color: transparent !important; color: transparent !important; box-shadow: none !important; }",
+                    "        .gatekeeper.hidden-hotspot:hover { background: rgba(255,255,255,0.2) !important; border-color: rgba(255,255,255,0.4) !important; color: white !important; }",
+                    "        .gatekeeper.hidden-hotspot.visited { background: #10b981 !important; border-color: #fff !important; color: #fff !important; }",
                     "        .hud-complete { background-color: #10b981 !important; border-color: #059669 !important; animation: pulseGreen 2s infinite; }",
                     "        #menu { position: fixed; bottom: 20px; right: 20px; z-index: 100; }",
                     "        @keyframes bounceCentered { 0%, 100% { transform: translateY(0) translateX(-50%); } 50% { transform: translateY(-10px) translateX(-50%); } }",
@@ -2603,10 +2627,8 @@
                     "        let isD = false, mx, my, mL, mLat;",
                     "        let momentum = true, lonVel = 0, latVel = 0, prevLon = 0, prevLat = 0;",
                     "        function getNextVis(startIdx) {",
-                    "            for(let i = startIdx + 1; i < scenes.length; i++) {",
-                    "                if(!scenes[i].isHidden) return i;",
-                    "            }",
-                    "            return -1;",
+                    "            // Hidden only affects the scene list menu, not the tour sequence.",
+                    "            return (startIdx + 1 < scenes.length) ? startIdx + 1 : -1;",
                     "        }",
                     "        function refreshProgressGates() {",
                     "            const s = scenes[cur];",
@@ -2621,7 +2643,10 @@
                     "                else tc.classList.add('hidden');",
                     "            } else {",
                     "                tc.classList.add('hidden');",
-                    "                if (unlockScene(nxt)) { renderMenu(); showUnlockToast(); }",
+                    "                // Hidden scenes are branch hubs: don't auto-unlock the next scene in sequence.",
+                    "                // Branch End scenes: this is the tail of one branch, so the array's \"next\" scene",
+                    "                // actually belongs to a different branch and must only be unlocked via its own portal.",
+                    "                if (!s.isHidden && !s.isBranchEnd && unlockScene(nxt)) { renderMenu(); showUnlockToast(); }",
                     "            }",
                     "        }",
                     "        function getPtr(e) {",
@@ -2986,7 +3011,7 @@
                     "                marker.style.width = '44px';",
                     "                marker.style.height = '44px';",
                     "                marker.classList.add('visited');",
-                    "                marker.classList.remove('opacity-0', 'hover:opacity-30', 'bg-white', 'text-transparent', 'hover:text-slate-800');",
+                    "                marker.classList.remove('hidden-hotspot');",
                     "                marker.classList.add('bg-indigo-500', 'text-white');",
                     "                marker.innerHTML = hs.type === 'quiz' ? '✓' : (hs.isGatekeeper ? '★' : 'i');",
                     "            }",
@@ -3151,8 +3176,15 @@
                     "        }",
                     "        function renderMenu() {",
                     "            const links = document.getElementById('sceneLinks'); links.innerHTML = '';",
+                    "            // Branch lock: once the visitor reaches a Branch Hub scene, hide every scene",
+                    "            // positioned before it so they can't backtrack out of the branch via the menu.",
+                    "            let lockBoundary = -1;",
+                    "            for (let i = 0; i <= cur; i++) {",
+                    "                if (scenes[i] && scenes[i].isBranchHub) lockBoundary = i;",
+                    "            }",
                     "            scenes.forEach((s, i) => {",
                     "                if (s.isHidden && !tourCompleted) return;",
+                    "                if (!tourCompleted && lockBoundary !== -1 && i < lockBoundary) return;",
                     "                const b = document.createElement('button');",
                     "                b.className = 'w-full text-left p-2 rounded ' + (i === cur ? 'bg-indigo-50 font-bold' : (isUnlocked(i) ? 'hover:bg-slate-100' : 'opacity-50'));",
                     "                b.textContent = (i+1)+'. '+s.title + (s.isHidden ? ' 🤫' : '');",
