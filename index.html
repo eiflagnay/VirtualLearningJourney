@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -229,7 +228,7 @@
     </main>
 
     <div id="floatingMenu">
-        <div id="fabPanel" class="bg-white rounded-xl shadow-2xl border border-stone-200 w-64 mb-4 hidden absolute bottom-full right-0 transition-opacity">
+        <div id="fabPanel" class="bg-white rounded-xl shadow-2xl border border-stone-200 w-80 mb-4 hidden absolute bottom-full right-0 transition-opacity">
             <div class="p-4 border-b border-stone-100 flex justify-between items-center bg-stone-800 text-white rounded-t-xl">
                 <h3 class="font-bold text-sm uppercase tracking-wider">Scenes</h3>
             </div>
@@ -548,6 +547,7 @@
             <div class="flex items-center gap-2"><div class="w-8 h-1.5 bg-blue-500 rounded"></div> Portal Connection</div>
             <div class="flex items-center gap-2"><div class="w-8 h-1.5 border-t-4 border-dashed border-purple-500"></div> Transit Challenge</div>
         </div>
+        <div id="mapPathStatus" class="hidden mt-5 pt-5 border-t border-stone-700 text-center"></div>
     </div>
 
     <!-- Review Points Modal -->
@@ -1309,8 +1309,12 @@
         };
 
         function startBuilderTimer() {
-            if (builderTimerInterval) clearInterval(builderTimerInterval); 
             builderStartTime = Date.now();
+            resumeBuilderTimerInterval();
+        }
+
+        function resumeBuilderTimerInterval() {
+            if (builderTimerInterval) clearInterval(builderTimerInterval);
             if (tourTimer > 0) {
                 document.getElementById('builderTimerDisplay').classList.remove('hidden');
                 builderTimerInterval = setInterval(() => {
@@ -1469,15 +1473,15 @@
                 }
 
                 const titleSpan = document.createElement('span');
-                titleSpan.className = 'truncate';
+                titleSpan.className = 'truncate flex-1 min-w-0';
                 titleSpan.textContent = (i + 1) + ". " + s.title;
                 div.appendChild(titleSpan);
 
                 const actionsDiv = document.createElement('div');
-                actionsDiv.className = 'flex items-center gap-1 opacity-40 md:opacity-0 group-hover:opacity-100 transition-opacity';
+                actionsDiv.className = 'flex items-center gap-0.5 flex-shrink-0 opacity-40 md:opacity-0 group-hover:opacity-100 transition-opacity';
 
                 const renameBtn = document.createElement('button');
-                renameBtn.className = 'text-blue-500 hover:text-blue-700 p-1 mr-1';
+                renameBtn.className = 'text-blue-500 hover:text-blue-700 p-1';
                 renameBtn.title = "Rename Scene";
                 renameBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>';
                 renameBtn.onclick = (e) => {
@@ -1519,6 +1523,9 @@
                     e.stopPropagation();
                     s.isEndingScene = !s.isEndingScene;
                     renderFloatingMenu();
+                    if (s.isEndingScene && tourCompletionMode === 'all') {
+                        setStatus('"' + s.title + '" is now an Ending Scene, but Tour Settings is still on "All Paths" — this flag won\'t do anything until you switch it to "Any One Path".', "info");
+                    }
                 };
 
                 const hideBtn = document.createElement('button');
@@ -2230,7 +2237,7 @@
 
         document.getElementById('libraryAudioBtn').onclick = () => {
             if (!activeSceneId) { setStatus("Create or select a scene first.", "error"); return; }
-            openMediaLibrary('scenes_audio/', 'audio', 'Choose Audio from Library', (url, name) => {
+            openMediaLibrary('scenes_audio/' + currentUser.uid + '/', 'audio', 'Choose Audio from Library', (url, name) => {
                 const s = scenes.find(sc => sc.id === activeSceneId);
                 if (!s) return;
                 s.audioSrc = url;
@@ -2270,7 +2277,7 @@
             document.getElementById('clearAudioBtn').classList.remove('hidden');
             setStatus("Uploading audio " + file.name + "...", "info");
 
-            const storageRef = ref(storage, 'scenes_audio/' + Date.now() + '_' + file.name);
+            const storageRef = ref(storage, 'scenes_audio/' + currentUser.uid + '/' + Date.now() + '_' + file.name);
             const uploadTask = uploadBytesResumable(storageRef, file);
 
             uploadTask.on('state_changed',
@@ -2309,7 +2316,7 @@
             if (!file) return;
 
             setStatus("Uploading image " + file.name + "...", "info");
-            const storageRef = ref(storage, 'hotspot_images/' + Date.now() + '_' + file.name);
+            const storageRef = ref(storage, 'hotspot_images/' + currentUser.uid + '/' + Date.now() + '_' + file.name);
             const uploadTask = uploadBytesResumable(storageRef, file);
 
             uploadTask.on('state_changed',
@@ -2407,7 +2414,7 @@
         }
 
         document.getElementById('browseImageLibraryBtn').onclick = () => {
-            openMediaLibrary('scenes/', 'image', 'Choose Photo from Library', applyLibraryImageToScene);
+            openMediaLibrary('scenes/' + currentUser.uid + '/', 'image', 'Choose Photo from Library', applyLibraryImageToScene);
         };
 
         document.getElementById('changePhotoBtn').onclick = () => {
@@ -2415,7 +2422,7 @@
         };
 
         document.getElementById('libraryPhotoBtn').onclick = () => {
-            openMediaLibrary('scenes/', 'image', 'Choose Photo from Library', applyLibraryImageToScene);
+            openMediaLibrary('scenes/' + currentUser.uid + '/', 'image', 'Choose Photo from Library', applyLibraryImageToScene);
         };
 
         document.getElementById('imageUpload').onchange = (e) => {
@@ -2430,7 +2437,7 @@
 
             setStatus("Starting background upload for " + file.name + "...", "info");
 
-            const storageRef = ref(storage, 'scenes/' + Date.now() + '_' + file.name);
+            const storageRef = ref(storage, 'scenes/' + currentUser.uid + '/' + Date.now() + '_' + file.name);
             const uploadTask = uploadBytesResumable(storageRef, file);
 
             uploadTask.on('state_changed',
@@ -2751,6 +2758,74 @@
             svg.appendChild(path);
         }
 
+        function getBuilderHubsWithUnexploredBranches() {
+            const result = [];
+            scenes.forEach(s => {
+                if (!s.isBranchHub) return;
+                if (!Object.prototype.hasOwnProperty.call(visitedHotspots, s.id)) return; // hub itself never reached
+                const hasUnexplored = s.hotspots.some(h => h.targetSceneId && !Object.prototype.hasOwnProperty.call(visitedHotspots, h.targetSceneId));
+                if (hasUnexplored) result.push(s);
+            });
+            return result;
+        }
+
+        function resumeBuilderJourney(hubSceneId) {
+            builderTourCompleted = false;
+
+            const btd = document.getElementById('builderTimerDisplay');
+            btd.classList.remove('bg-emerald-600', 'border-emerald-500', 'border-2');
+            btd.classList.add('bg-stone-900/80');
+            document.getElementById('builderAccuracyContainer').classList.add('hidden');
+            document.getElementById('builderFinishJourneyBtn').classList.add('hidden');
+
+            if (tourTimer > 0) {
+                resumeBuilderTimerInterval();
+            } else {
+                btd.classList.add('hidden');
+            }
+
+            closeBuilderMap();
+            document.getElementById('builderCompleteOverlay').classList.add('hidden', 'opacity-0');
+            switchScene(hubSceneId);
+        }
+
+        function renderMapPathStatus() {
+            const statusEl = document.getElementById('mapPathStatus');
+            if (!builderTourCompleted) {
+                statusEl.classList.add('hidden');
+                statusEl.innerHTML = '';
+                return;
+            }
+
+            const openHubs = getBuilderHubsWithUnexploredBranches();
+            statusEl.classList.remove('hidden');
+            statusEl.innerHTML = '';
+
+            if (openHubs.length === 0) {
+                const msg = document.createElement('p');
+                msg.className = 'text-emerald-400 font-bold';
+                msg.textContent = '🎉 Congratulations — you\'ve completed every path in this tour!';
+                statusEl.appendChild(msg);
+                return;
+            }
+
+            const label = document.createElement('p');
+            label.className = 'text-stone-300 text-sm mb-3';
+            label.textContent = "You've completed one path. Explore the other branch from:";
+            statusEl.appendChild(label);
+
+            const btnRow = document.createElement('div');
+            btnRow.className = 'flex flex-wrap gap-3 justify-center';
+            openHubs.forEach(hub => {
+                const btn = document.createElement('button');
+                btn.className = 'bg-teal-700 hover:bg-teal-800 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors';
+                btn.textContent = 'Explore from: ' + hub.title;
+                btn.onclick = () => resumeBuilderJourney(hub.id);
+                btnRow.appendChild(btn);
+            });
+            statusEl.appendChild(btnRow);
+        }
+
         function openBuilderMap() {
             const m = document.getElementById('mapModal');
             m.classList.remove('hidden');
@@ -2763,8 +2838,11 @@
                 if (c.tagName !== 'svg' && c.tagName !== 'SVG') c.remove();
             });
 
+            renderMapPathStatus();
+
             const els = {};
             scenes.forEach((s) => {
+                if (!Object.prototype.hasOwnProperty.call(visitedHotspots, s.id)) return; // Only show scenes actually visited
                 const b = document.createElement('button');
                 b.className = "relative z-10 px-5 py-3 rounded-xl font-bold shadow-xl border-2 transition-transform hover:scale-105 " + (s.id === activeSceneId ? 'bg-teal-700 text-white border-teal-800' : 'bg-white text-stone-800 border-stone-200');
                 b.textContent = s.title + (s.isHidden ? ' 🤫' : '');
@@ -2826,6 +2904,17 @@
         document.getElementById('exportBtn').onclick = () => {
             if (!scenes.length || scenes.some(s => !s.imageSrc)) { setStatus("Setup scenes and wait for cloud uploads to finish first.", "error"); return; }
 
+            const hasEndingFlags = scenes.some(s => s.isEndingScene);
+            if (hasEndingFlags && tourCompletionMode === 'all') {
+                customConfirm('One or more scenes are flagged as an "Ending Scene", but Tour Settings is still set to "All Paths" — those flags will be ignored, and the tour will require every branch to be completed before it ends. Export anyway?', (confirmed) => {
+                    if (confirmed) performExport();
+                });
+            } else {
+                performExport();
+            }
+        };
+
+        function performExport() {
             customPrompt("Enter Export Filename (without .html):", "360-tour", (fileName) => {
                 if (!fileName) return;
 
@@ -3004,6 +3093,7 @@
                     "            <div class=\"flex items-center gap-2\"><div class=\"w-8 h-1.5 bg-blue-500 rounded\"></div> Portal Connection</div>",
                     "            <div class=\"flex items-center gap-2\"><div class=\"w-8 h-1.5 border-t-4 border-dashed border-purple-500\"></div> Transit Challenge</div>",
                     "        </div>",
+                    "        <div id=\"mapPathStatus\" class=\"hidden mt-5 pt-5 border-t border-slate-700 text-center\"></div>",
                     "    </div>",
                     "    <div id=\"popup\" class=\"absolute -translate-x-1/2 bg-white p-6 rounded-xl shadow-2xl hidden w-[90vw] max-w-lg z-[200]\">",
                     "        <button onclick=\"closeP()\" class=\"absolute top-3 right-3 text-slate-400 hover:text-slate-600 text-xl font-bold z-10\">✕</button>",
@@ -3053,7 +3143,8 @@
                     "            unlocked.add(i);",
                     "            return true;",
                     "        }",
-                    "        function isUnlocked(i) { return tourCompleted || unlocked.has(i); }",
+                    "        function isTourFullyComplete() { return getHubsWithUnexploredBranches().length === 0; }",
+                    "        function isUnlocked(i) { return (tourCompleted && isTourFullyComplete()) || unlocked.has(i); }",
                     "        let scene, camera, renderer, sphere;",
                     "        let vis = {};",
                     "        let activeP = null;",
@@ -3212,7 +3303,9 @@
                     "                    openMap();",
                     "                };",
                     "            }",
-                    "            scenes.forEach((s, i) => unlockScene(i));",
+                    "            if (isTourFullyComplete()) {",
+                    "                scenes.forEach((s, i) => unlockScene(i));",
+                    "            }",
                     "            renderMenu();",
                     "            const over = document.getElementById('completeOverlay');",
                     "            if (over) {",
@@ -3221,8 +3314,11 @@
                     "            }",
                     "        };",
                     "        function startTimer() {",
-                    "            if (timerInterval) clearInterval(timerInterval);",
                     "            startTime = Date.now();",
+                    "            resumeTimerInterval();",
+                    "        }",
+                    "        function resumeTimerInterval() {",
+                    "            if (timerInterval) clearInterval(timerInterval);",
                     "            if (tourTimer > 0) {",
                     "                document.getElementById('timerDisplay').classList.remove('hidden');",
                     "                timerInterval = setInterval(() => {",
@@ -3601,6 +3697,68 @@
                     "            path.setAttribute('marker-end', \"url(#arrow-\" + cName + \")\");",
                     "            svg.appendChild(path);",
                     "        }",
+                    "        function getHubsWithUnexploredBranches() {",
+                    "            const result = [];",
+                    "            scenes.forEach((s, i) => {",
+                    "                if (!s.isBranchHub) return;",
+                    "                if (!vis.hasOwnProperty(i)) return;",
+                    "                const hasUnexplored = s.hotspots.some(h => {",
+                    "                    if (!h.targetSceneId) return false;",
+                    "                    const targetIdx = scenes.findIndex(sc => sc.id === h.targetSceneId);",
+                    "                    return targetIdx !== -1 && !vis.hasOwnProperty(targetIdx);",
+                    "                });",
+                    "                if (hasUnexplored) result.push(i);",
+                    "            });",
+                    "            return result;",
+                    "        }",
+                    "        function resumeJourney(hubIdx) {",
+                    "            tourCompleted = false;",
+                    "            const td = document.getElementById('timerDisplay');",
+                    "            td.classList.remove('bg-emerald-600', 'border-emerald-500', 'border-2');",
+                    "            td.classList.add('bg-slate-900/80');",
+                    "            document.getElementById('accuracyContainer').classList.add('hidden');",
+                    "            document.getElementById('finishJourneyBtn').classList.add('hidden');",
+                    "            if (tourTimer > 0) {",
+                    "                resumeTimerInterval();",
+                    "            } else {",
+                    "                td.classList.add('hidden');",
+                    "            }",
+                    "            closeMap();",
+                    "            document.getElementById('completeOverlay').classList.add('hidden', 'opacity-0');",
+                    "            load(hubIdx);",
+                    "        }",
+                    "        function renderMapPathStatus() {",
+                    "            const statusEl = document.getElementById('mapPathStatus');",
+                    "            if (!tourCompleted) {",
+                    "                statusEl.classList.add('hidden');",
+                    "                statusEl.innerHTML = '';",
+                    "                return;",
+                    "            }",
+                    "            const openHubs = getHubsWithUnexploredBranches();",
+                    "            statusEl.classList.remove('hidden');",
+                    "            statusEl.innerHTML = '';",
+                    "            if (openHubs.length === 0) {",
+                    "                const msg = document.createElement('p');",
+                    "                msg.className = 'text-emerald-400 font-bold';",
+                    "                msg.textContent = \"🎉 Congratulations — you've completed every path in this tour!\";",
+                    "                statusEl.appendChild(msg);",
+                    "                return;",
+                    "            }",
+                    "            const label = document.createElement('p');",
+                    "            label.className = 'text-slate-300 text-sm mb-3';",
+                    "            label.textContent = \"You've completed one path. Explore the other branch from:\";",
+                    "            statusEl.appendChild(label);",
+                    "            const btnRow = document.createElement('div');",
+                    "            btnRow.className = 'flex flex-wrap gap-3 justify-center';",
+                    "            openHubs.forEach(idx => {",
+                    "                const btn = document.createElement('button');",
+                    "                btn.className = 'bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors';",
+                    "                btn.textContent = 'Explore from: ' + scenes[idx].title;",
+                    "                btn.onclick = () => resumeJourney(idx);",
+                    "                btnRow.appendChild(btn);",
+                    "            });",
+                    "            statusEl.appendChild(btnRow);",
+                    "        }",
                     "        function openMap() {",
                     "            const m = document.getElementById('mapModal');",
                     "            m.classList.remove('hidden');",
@@ -3609,8 +3767,10 @@
                     "            const svg = document.getElementById('mapLines');",
                     "            Array.from(svg.querySelectorAll('path')).forEach(p => p.remove());",
                     "            Array.from(cont.children).forEach(c => { if(c.tagName !== 'svg' && c.tagName !== 'SVG') c.remove(); });",
+                    "            renderMapPathStatus();",
                     "            const els = {};",
                     "            scenes.forEach((s, i) => {",
+                    "                if (!vis.hasOwnProperty(i)) return;",
                     "                const b = document.createElement('button');",
                     "                b.className = \"relative z-10 px-5 py-3 rounded-xl font-bold shadow-xl border-2 transition-transform hover:scale-105 \" + (i === cur ? \"bg-indigo-600 text-white border-indigo-700\" : \"bg-white text-slate-800 border-slate-200\");",
                     "                b.textContent = s.title + (s.isHidden ? \" 🤫\" : \"\");",
@@ -3654,6 +3814,7 @@
                     "        }",
                     "        function renderMenu() {",
                     "            const links = document.getElementById('sceneLinks'); links.innerHTML = '';",
+                    "            const fullyDone = tourCompleted && isTourFullyComplete();",
                     "            // Branch lock: once the visitor reaches a Branch Hub scene, hide every scene",
                     "            // positioned before it so they can't backtrack out of the branch via the menu.",
                     "            let lockBoundary = -1;",
@@ -3661,8 +3822,8 @@
                     "                if (scenes[i] && scenes[i].isBranchHub) lockBoundary = i;",
                     "            }",
                     "            scenes.forEach((s, i) => {",
-                    "                if (s.isHidden && !tourCompleted) return;",
-                    "                if (!tourCompleted && lockBoundary !== -1 && i < lockBoundary) return;",
+                    "                if (s.isHidden && !fullyDone) return;",
+                    "                if (!fullyDone && lockBoundary !== -1 && i < lockBoundary) return;",
                     "                const b = document.createElement('button');",
                     "                b.className = 'w-full text-left p-2 rounded ' + (i === cur ? 'bg-indigo-50 font-bold' : (isUnlocked(i) ? 'hover:bg-slate-100' : 'opacity-50'));",
                     "                b.textContent = (i+1)+'. '+s.title + (s.isHidden ? ' 🤫' : '');",
@@ -3776,7 +3937,7 @@
                 a.click();
                 setTimeout(() => URL.revokeObjectURL(url), 1000);
             });
-        };
+        }
 
         // --- Gemini AI Features ---
         document.getElementById('aiHotspotBtn').onclick = async () => {
