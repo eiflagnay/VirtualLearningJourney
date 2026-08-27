@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -228,7 +229,7 @@
     </main>
 
     <div id="floatingMenu">
-        <div id="fabPanel" class="bg-white rounded-xl shadow-2xl border border-stone-200 w-64 mb-4 hidden absolute bottom-full right-0 transition-opacity">
+        <div id="fabPanel" class="bg-white rounded-xl shadow-2xl border border-stone-200 w-80 mb-4 hidden absolute bottom-full right-0 transition-opacity">
             <div class="p-4 border-b border-stone-100 flex justify-between items-center bg-stone-800 text-white rounded-t-xl">
                 <h3 class="font-bold text-sm uppercase tracking-wider">Scenes</h3>
             </div>
@@ -1473,15 +1474,15 @@
                 }
 
                 const titleSpan = document.createElement('span');
-                titleSpan.className = 'truncate';
+                titleSpan.className = 'truncate flex-1 min-w-0';
                 titleSpan.textContent = (i + 1) + ". " + s.title;
                 div.appendChild(titleSpan);
 
                 const actionsDiv = document.createElement('div');
-                actionsDiv.className = 'flex items-center gap-1 opacity-40 md:opacity-0 group-hover:opacity-100 transition-opacity';
+                actionsDiv.className = 'flex items-center gap-0.5 flex-shrink-0 opacity-40 md:opacity-0 group-hover:opacity-100 transition-opacity';
 
                 const renameBtn = document.createElement('button');
-                renameBtn.className = 'text-blue-500 hover:text-blue-700 p-1 mr-1';
+                renameBtn.className = 'text-blue-500 hover:text-blue-700 p-1';
                 renameBtn.title = "Rename Scene";
                 renameBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>';
                 renameBtn.onclick = (e) => {
@@ -3143,7 +3144,8 @@
                     "            unlocked.add(i);",
                     "            return true;",
                     "        }",
-                    "        function isUnlocked(i) { return tourCompleted || unlocked.has(i); }",
+                    "        function isTourFullyComplete() { return getHubsWithUnexploredBranches().length === 0; }",
+                    "        function isUnlocked(i) { return (tourCompleted && isTourFullyComplete()) || unlocked.has(i); }",
                     "        let scene, camera, renderer, sphere;",
                     "        let vis = {};",
                     "        let activeP = null;",
@@ -3302,7 +3304,9 @@
                     "                    openMap();",
                     "                };",
                     "            }",
-                    "            scenes.forEach((s, i) => unlockScene(i));",
+                    "            if (isTourFullyComplete()) {",
+                    "                scenes.forEach((s, i) => unlockScene(i));",
+                    "            }",
                     "            renderMenu();",
                     "            const over = document.getElementById('completeOverlay');",
                     "            if (over) {",
@@ -3811,6 +3815,7 @@
                     "        }",
                     "        function renderMenu() {",
                     "            const links = document.getElementById('sceneLinks'); links.innerHTML = '';",
+                    "            const fullyDone = tourCompleted && isTourFullyComplete();",
                     "            // Branch lock: once the visitor reaches a Branch Hub scene, hide every scene",
                     "            // positioned before it so they can't backtrack out of the branch via the menu.",
                     "            let lockBoundary = -1;",
@@ -3818,8 +3823,8 @@
                     "                if (scenes[i] && scenes[i].isBranchHub) lockBoundary = i;",
                     "            }",
                     "            scenes.forEach((s, i) => {",
-                    "                if (s.isHidden && !tourCompleted) return;",
-                    "                if (!tourCompleted && lockBoundary !== -1 && i < lockBoundary) return;",
+                    "                if (s.isHidden && !fullyDone) return;",
+                    "                if (!fullyDone && lockBoundary !== -1 && i < lockBoundary) return;",
                     "                const b = document.createElement('button');",
                     "                b.className = 'w-full text-left p-2 rounded ' + (i === cur ? 'bg-indigo-50 font-bold' : (isUnlocked(i) ? 'hover:bg-slate-100' : 'opacity-50'));",
                     "                b.textContent = (i+1)+'. '+s.title + (s.isHidden ? ' 🤫' : '');",
