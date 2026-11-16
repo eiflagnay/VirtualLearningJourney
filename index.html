@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -52,22 +51,22 @@
     </div>
 
     <header class="bg-white border-b border-stone-200 shadow-sm sticky top-0 z-30">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-16 py-2 flex items-center justify-between flex-wrap gap-y-2">
-            <div class="flex items-center gap-3 overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-16 py-2 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 overflow-hidden min-w-0 md:flex-1">
                 <div class="bg-teal-700 p-2 rounded-lg text-white flex-shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
                 </div>
                 <h1 id="currentSceneTitleHeader" class="text-lg md:text-xl font-bold text-stone-800 truncate max-w-[180px] sm:max-w-xs md:max-w-none">Virtual Learning Journey Builder</h1>
             </div>
 
-            <div class="flex items-center">
-                <div id="userProfile" class="hidden items-center gap-4 mr-4 border-r border-stone-200 pr-4">
-                    <div class="flex items-center gap-1 bg-amber-100 text-amber-800 px-3 py-1.5 rounded-full font-bold text-sm shadow-sm" title="Your Export Credits">
+            <div class="flex items-center md:flex-shrink-0">
+                <div id="userProfile" class="hidden items-center gap-3 mr-2 md:mr-0 md:order-2 md:ml-3 md:border-l md:border-stone-200 md:pl-4">
+                    <div class="flex items-center gap-1 bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-bold text-sm whitespace-nowrap" title="Your Export Credits">
                         <span>🪙</span> <span id="creditBalance">...</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <div class="w-8 h-8 rounded-full bg-teal-200 flex items-center justify-center text-teal-800 font-bold overflow-hidden border-2 border-teal-100 shadow-sm" id="userAvatar"></div>
-                        <button id="signOutBtn" class="text-xs text-stone-500 hover:text-red-500 font-medium transition-colors hidden md:block">Sign Out</button>
+                        <button id="signOutBtn" class="text-xs text-stone-500 hover:text-red-500 font-medium transition-colors hidden md:block whitespace-nowrap">Sign Out</button>
                     </div>
                 </div>
 
@@ -75,39 +74,44 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                 </button>
 
-                <div id="toolbarMenu" class="hidden md:flex absolute top-16 right-4 bg-white shadow-2xl border border-stone-200 rounded-xl p-4 flex-col gap-2 z-50 w-56 md:static md:flex-row md:flex-wrap md:justify-end md:items-center md:shadow-none md:border-none md:p-0 md:bg-transparent md:w-auto overflow-y-auto max-h-[80vh] md:max-h-none md:overflow-visible">
-                    <button id="toggleModeBtn" class="w-full md:w-auto justify-start bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 hover:border-stone-400 px-4 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
+                <div id="toolbarMenu" class="hidden md:flex absolute top-16 right-4 bg-white shadow-2xl border border-stone-200 rounded-xl p-4 flex-col gap-2 z-50 w-56 md:static md:order-1 md:flex-row md:flex-nowrap md:justify-end md:items-center md:shadow-none md:border-none md:p-0 md:bg-transparent md:w-auto overflow-y-auto max-h-[80vh] md:max-h-none md:overflow-visible">
+                    <button id="toggleModeBtn" class="w-full md:w-auto justify-start bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 hover:border-stone-400 px-3 py-2 rounded-md md:whitespace-nowrap font-medium transition-colors text-sm flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                         Preview Mode
                     </button>
 
                     <div class="w-full h-px bg-stone-200 my-1 md:my-0 md:w-px md:h-6 md:mx-1" aria-hidden="true"></div>
 
-                    <button id="setupTransitBtn" class="w-full md:w-auto justify-start bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 hover:border-stone-400 px-4 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
+                    <button id="setupTransitBtn" class="w-full md:w-auto justify-start bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 hover:border-stone-400 px-3 py-2 rounded-md md:whitespace-nowrap font-medium transition-colors text-sm flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
                         Transit Logic
                     </button>
-                    <button id="addAudioBtn" class="w-full md:w-auto justify-start bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 hover:border-stone-400 px-4 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
+                    <div id="audioMenuWrapper" class="relative w-full md:w-auto">
+                        <button id="audioMenuBtn" class="hidden md:flex bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 hover:border-stone-400 px-3 py-2 rounded-md font-medium transition-colors text-sm items-center gap-2 whitespace-nowrap"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg> Audio <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+                        <div id="audioMenuPanel" class="w-full flex flex-col gap-2 md:gap-1 md:hidden md:absolute md:top-full md:left-0 md:mt-2 md:w-52 md:bg-white md:shadow-2xl md:border md:border-stone-200 md:rounded-xl md:p-2 md:z-50">
+<button id="addAudioBtn" class="w-full justify-start bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 md:border-0 px-3 md:px-2 py-2 rounded-md whitespace-nowrap font-medium transition-colors text-sm flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
                         <span id="addAudioBtnText">Add Audio</span>
                     </button>
-                    <button id="libraryAudioBtn" class="w-full md:w-auto justify-start bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 hover:border-stone-400 px-4 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
+                    <button id="libraryAudioBtn" class="w-full justify-start bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 md:border-0 px-3 md:px-2 py-2 rounded-md whitespace-nowrap font-medium transition-colors text-sm flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                         Audio Library
                     </button>
-                    <button id="clearAudioBtn" class="hidden w-full md:w-auto justify-start bg-white border border-red-300 text-red-700 hover:bg-red-50 px-4 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
+                    <button id="clearAudioBtn" class="hidden w-full justify-start bg-white border border-red-300 text-red-700 hover:bg-red-50 md:border-0 px-3 md:px-2 py-2 rounded-md whitespace-nowrap font-medium transition-colors text-sm flex items-center gap-2">
                         ✕ Clear Audio
                     </button>
+                    </div>
+                    </div>
                     <input type="file" id="audioUploadInput" class="hidden" accept="audio/*">
                     <input type="file" id="importFile" class="hidden" accept=".html">
 
                     <div class="w-full h-px bg-stone-200 my-1 md:my-0 md:w-px md:h-6 md:mx-1" aria-hidden="true"></div>
 
-                    <button id="exportBtn" class="w-full md:w-auto justify-start bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-md font-bold transition-colors text-sm flex items-center gap-2">
+                    <button id="exportBtn" class="w-full md:w-auto justify-start bg-teal-700 hover:bg-teal-800 text-white px-3 py-2 rounded-md md:whitespace-nowrap font-bold transition-colors text-sm flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                         Export App
                     </button>
-                    <button id="publishBtn" class="w-full md:w-auto justify-start bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 hover:border-stone-400 px-4 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
+                    <button id="publishBtn" class="w-full md:w-auto justify-start bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 hover:border-stone-400 px-3 py-2 rounded-md md:whitespace-nowrap font-medium transition-colors text-sm flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                         Publish Tour
                     </button>
@@ -115,7 +119,7 @@
                     <div class="w-full h-px bg-stone-200 my-1 md:my-0 md:w-px md:h-6 md:mx-1" aria-hidden="true"></div>
 
                     <div id="moreMenuWrapper" class="relative w-full md:w-auto">
-                        <button id="moreMenuBtn" class="hidden md:flex w-full md:w-auto justify-start bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 hover:border-stone-400 px-4 py-2 rounded-md font-medium transition-colors text-sm items-center gap-2">
+                        <button id="moreMenuBtn" class="hidden md:flex w-full md:w-auto justify-start bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 hover:border-stone-400 px-3 py-2 rounded-md font-medium transition-colors text-sm items-center gap-2">
                             More
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </button>
@@ -148,6 +152,10 @@
                             <button id="publishedToursBtn" class="w-full justify-start bg-white md:border-0 border border-stone-300 text-stone-700 hover:bg-stone-50 px-4 md:px-2 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                                 Published Tours
+                            </button>
+                            <button id="newTourBtn" class="w-full justify-start bg-white border border-red-300 text-red-700 hover:bg-red-50 px-4 md:px-2 py-2 rounded-md font-medium transition-colors text-sm flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                New Tour
                             </button>
                         </div>
                     </div>
@@ -431,6 +439,14 @@
                     </div>
                     <p class="text-xs text-stone-400 mt-1">"Any One Path" ends the tour as soon as one branch is finished. "All Paths" requires every branch to be completed. No effect on tours without branches.</p>
                 </div>
+                <div>
+                    <label class="block text-sm font-medium text-stone-700 mb-1">Choose Your Own Adventure Mode</label>
+                    <div class="inline-flex rounded-md border border-stone-300 overflow-hidden text-sm font-medium w-full">
+                        <button type="button" id="cyoaModeOffBtn" class="flex-1 px-3 py-2 transition-colors">Off</button>
+                        <button type="button" id="cyoaModeOnBtn" class="flex-1 px-3 py-2 transition-colors border-l border-stone-300">On</button>
+                    </div>
+                    <p class="text-xs text-stone-400 mt-1">When on, the menu only shows scenes already visited (no jumping back) — the tour must be played forward through its actual hotspots and portals. On completion, only submitting results is available until that's done, after which the visitor can freely explore or restart.</p>
+                </div>
             </div>
             <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-stone-100">
                 <button id="closeSettingsBtn" class="px-4 py-2 text-stone-600 hover:bg-stone-100 rounded-md font-medium transition-colors">Cancel</button>
@@ -604,6 +620,27 @@
         </div>
     </div>
 
+    <!-- Manage Leaderboard Modal -->
+    <div id="manageLeaderboardModal" class="fixed inset-0 bg-stone-900 bg-opacity-90 hidden z-[95] flex flex-col p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 id="manageLeaderboardTitle" class="text-2xl font-bold text-white">🏆 Leaderboard</h2>
+            <button id="closeManageLeaderboardBtn" class="text-stone-300 hover:text-white font-bold text-xl">✕ Close</button>
+        </div>
+        <div class="flex-grow overflow-y-auto bg-stone-800 rounded-xl border border-stone-700 p-6">
+            <div id="manageLeaderboardLoading" class="text-stone-400 text-center py-10">Loading results...</div>
+            <div id="manageLeaderboardEmpty" class="hidden text-stone-400 text-center py-10">No results submitted yet.</div>
+            <div id="manageLeaderboardError" class="hidden text-red-400 text-center py-10"></div>
+            <div id="manageLeaderboardListSection" class="hidden mb-8">
+                <h3 class="text-stone-300 font-bold uppercase text-xs tracking-wider mb-3">Rankings</h3>
+                <div id="manageLeaderboardListContainer" class="space-y-2"></div>
+            </div>
+            <div id="manageLeaderboardMapSection" class="hidden">
+                <h3 class="text-stone-300 font-bold uppercase text-xs tracking-wider mb-3">Decision Points (% of everyone who submitted)</h3>
+                <div id="manageLeaderboardMapContainer" class="max-h-[50vh] overflow-y-auto space-y-3 pr-1"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Review Points Modal -->
     <div id="reviewPointsModal" class="fixed inset-0 bg-stone-900 bg-opacity-75 hidden z-[85] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 max-w-2xl w-full max-h-[85vh] flex flex-col">
@@ -700,7 +737,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL, listAll, getMetadata, deleteObject } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAdPMFxcptu9QEng_poGGm9YteFUO8UYt4",
@@ -727,6 +764,9 @@
         let tourTimer = 0; // minutes
         let tourCompletionMode = 'all'; // 'all' | 'any' — how the tour ends when it branches
         let pendingCompletionMode = 'all'; // staged value while Tour Settings modal is open
+        let tourCYOAMode = false; // Choose Your Own Adventure Mode — restricts free menu navigation
+        let loadedFromPublishInfo = null; // {storagePath, publishId, title} — set when a published tour was loaded for editing, so Publish can offer to update it in place
+        let pendingCYOAMode = false; // staged value while Tour Settings modal is open
         let builderStartTime = 0;
         let builderTimerInterval = null;
         let builderTourCompleted = false;
@@ -931,20 +971,38 @@
         // --- Publish Tour (upload to Firebase Storage, get a shareable link) ---
 
         function performPublish() {
+            if (loadedFromPublishInfo) {
+                const info = loadedFromPublishInfo;
+                customConfirm('You loaded "' + info.title + '" for editing. Update that same tour (same link, same leaderboard) instead of creating a new one? Choose Cancel to publish this as a brand new tour with a new link instead.', (confirmed) => {
+                    if (confirmed) {
+                        performPublishUpdate(info);
+                    } else {
+                        performPublishNew();
+                    }
+                });
+            } else {
+                performPublishNew();
+            }
+        }
+
+        function performPublishNew() {
             customPrompt("Name this published tour:", "My Virtual Tour", (title) => {
                 if (!title || !title.trim()) return;
                 const cleanTitle = title.trim();
 
                 setStatus("Publishing \"" + cleanTitle + "\"...", "info");
 
-                const exportHtml = generateTourHtml();
+                const publishTimestamp = Date.now();
+                const publishId = currentUser.uid + '_' + publishTimestamp;
+                const exportHtml = generateTourHtml(publishId, currentUser.uid);
                 const blob = new Blob([exportHtml], { type: 'text/html' });
                 const safeName = cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'tour';
-                const storageRef = ref(storage, 'published_tours/' + currentUser.uid + '/' + Date.now() + '_' + safeName + '.html');
+                const storagePath = 'published_tours/' + currentUser.uid + '/' + publishTimestamp + '_' + safeName + '.html';
+                const storageRef = ref(storage, storagePath);
 
                 const uploadTask = uploadBytesResumable(storageRef, blob, {
                     contentType: 'text/html',
-                    customMetadata: { title: cleanTitle }
+                    customMetadata: { title: cleanTitle, publishId: publishId }
                 });
 
                 uploadTask.on('state_changed',
@@ -959,6 +1017,7 @@
                     async () => {
                         try {
                             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                            loadedFromPublishInfo = { storagePath: storagePath, publishId: publishId, title: cleanTitle };
                             setStatus("Tour published successfully!", "success");
                             document.getElementById('publishResultUrl').value = downloadURL;
                             document.getElementById('openPublishResultBtn').href = downloadURL;
@@ -970,6 +1029,42 @@
                     }
                 );
             });
+        }
+
+        function performPublishUpdate(info) {
+            setStatus("Updating \"" + info.title + "\"...", "info");
+
+            const exportHtml = generateTourHtml(info.publishId, currentUser.uid);
+            const blob = new Blob([exportHtml], { type: 'text/html' });
+            const storageRef = ref(storage, info.storagePath);
+
+            const uploadTask = uploadBytesResumable(storageRef, blob, {
+                contentType: 'text/html',
+                customMetadata: { title: info.title, publishId: info.publishId }
+            });
+
+            uploadTask.on('state_changed',
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    setStatus("Updating... " + Math.round(progress) + "%", "info");
+                },
+                (error) => {
+                    console.error("Publish Update Error:", error);
+                    setStatus("Update failed: " + error.message, "error");
+                },
+                async () => {
+                    try {
+                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                        setStatus("\"" + info.title + "\" updated successfully!", "success");
+                        document.getElementById('publishResultUrl').value = downloadURL;
+                        document.getElementById('openPublishResultBtn').href = downloadURL;
+                        document.getElementById('publishResultModal').classList.remove('hidden');
+                    } catch (err) {
+                        setStatus("Update uploaded, but couldn't confirm the link. Check Published Tours.", "error");
+                        console.error(err);
+                    }
+                }
+            );
         }
 
         document.getElementById('copyPublishUrlBtn').onclick = () => {
@@ -997,6 +1092,12 @@
         }
 
         document.getElementById('publishedToursBtn').onclick = openPublishedToursModal;
+
+        document.getElementById('newTourBtn').onclick = () => {
+            customConfirm('Start a new tour? Any unsaved changes to your current tour will be lost — Export or Publish first if you want to keep it.', (confirmed) => {
+                if (confirmed) location.reload();
+            });
+        };
         document.getElementById('closePublishedToursBtn').onclick = () => {
             document.getElementById('publishedToursModal').classList.add('hidden');
         };
@@ -1048,6 +1149,12 @@
                     editBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>';
                     editBtn.disabled = true;
 
+                    const leaderboardBtn = document.createElement('button');
+                    leaderboardBtn.className = 'text-amber-500 hover:text-amber-700 p-1.5';
+                    leaderboardBtn.title = 'Manage Leaderboard';
+                    leaderboardBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8"></path><path d="M12 17v4"></path><path d="M7 4h10v5a5 5 0 0 1-10 0V4z"></path><path d="M7 6H4a2 2 0 0 0 0 4h.5"></path><path d="M17 6h3a2 2 0 0 1 0 4h-.5"></path></svg>';
+                    leaderboardBtn.disabled = true;
+
                     const copyBtn = document.createElement('button');
                     copyBtn.className = 'text-teal-700 hover:text-teal-900 p-1.5 text-xs font-bold border border-teal-200 rounded-md hover:bg-teal-50';
                     copyBtn.textContent = 'Copy Link';
@@ -1078,6 +1185,7 @@
                     };
 
                     actions.appendChild(editBtn);
+                    actions.appendChild(leaderboardBtn);
                     actions.appendChild(copyBtn);
                     actions.appendChild(openLink);
                     actions.appendChild(delBtn);
@@ -1087,7 +1195,8 @@
                     Promise.all([getMetadata(itemRef), getDownloadURL(itemRef)]).then(([metadata, url]) => {
                         const title = (metadata.customMetadata && metadata.customMetadata.title) || friendlyFileName(itemRef.name);
                         nameEl.textContent = title;
-                        dateEl.textContent = 'Published ' + new Date(metadata.timeCreated).toLocaleString();
+                        const displayDate = metadata.updated || metadata.timeCreated;
+                        dateEl.textContent = (metadata.updated && metadata.updated !== metadata.timeCreated ? 'Updated ' : 'Published ') + new Date(displayDate).toLocaleString();
                         openLink.href = url;
                         copyBtn.disabled = false;
                         copyBtn.onclick = () => {
@@ -1098,7 +1207,15 @@
                             });
                         };
                         editBtn.disabled = false;
-                        editBtn.onclick = () => loadPublishedTourIntoEditor(url, title);
+                        editBtn.onclick = () => loadPublishedTourIntoEditor(url, title, itemRef.fullPath, resolvedPublishId);
+
+                        const resolvedPublishId = metadata.customMetadata && metadata.customMetadata.publishId;
+                        if (resolvedPublishId) {
+                            leaderboardBtn.disabled = false;
+                            leaderboardBtn.onclick = () => openManageLeaderboardModal(url, title, resolvedPublishId);
+                        } else {
+                            leaderboardBtn.title = 'No leaderboard available (published before this feature existed)';
+                        }
                     }).catch(() => {
                         nameEl.textContent = friendlyFileName(itemRef.name);
                         dateEl.textContent = 'Could not load details';
@@ -1671,6 +1788,22 @@
 
         function renderFloatingMenu() {
             const list = document.getElementById('fabSceneList');
+
+            if (!isEditMode && tourCYOAMode) {
+                // Preview Mode + CYOA Mode: mirror the exported tour's restricted menu exactly,
+                // so testing here reflects what a student will actually experience.
+                const visitedScenes = scenes.filter(s => Object.prototype.hasOwnProperty.call(visitedHotspots, s.id));
+                list.innerHTML = visitedScenes.length ? '' : '<p class="text-xs text-stone-500 p-2 text-center">No scenes visited yet.</p>';
+                visitedScenes.forEach((s) => {
+                    const idx = scenes.findIndex(sc => sc.id === s.id);
+                    const row = document.createElement('div');
+                    row.className = "w-full px-3 py-2 rounded-md mb-1 text-sm font-medium " + (s.id === activeSceneId ? 'bg-teal-100 text-teal-900' : 'text-stone-500');
+                    row.textContent = (idx + 1) + ". " + s.title;
+                    list.appendChild(row);
+                });
+                return;
+            }
+
             list.innerHTML = scenes.length ? '' : '<p class="text-xs text-stone-500 p-2 text-center">No scenes.</p>';
 
             let draggedIndex = null;
@@ -1908,6 +2041,8 @@
             }
             
             renderFloatingMenu();
+
+            if (!isEditMode) checkBuilderCompletion(); // A scene with no hotspots (a bare ending) can still complete the tour just by being reached.
         }
 
         function renderHotspots() {
@@ -2452,28 +2587,27 @@
             });
         });
 
-        // --- "More" overflow menu (desktop only) ---
-        const moreMenuPanel = document.getElementById('moreMenuPanel');
-
-        document.getElementById('moreMenuBtn').onclick = (e) => {
-            e.stopPropagation();
-            const isOpen = moreMenuPanel.style.display === 'flex';
-            moreMenuPanel.style.display = isOpen ? '' : 'flex';
-        };
-
-        document.querySelectorAll('#moreMenuPanel button').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (window.innerWidth >= 768) {
-                    moreMenuPanel.style.display = '';
+        // --- Desktop dropdown menus (Audio, More) ---
+        [['audioMenuBtn','audioMenuPanel','audioMenuWrapper'],['moreMenuBtn','moreMenuPanel','moreMenuWrapper']].forEach(([btnId, panelId, wrapId]) => {
+            const btn = document.getElementById(btnId);
+            const panel = document.getElementById(panelId);
+            const wrapper = document.getElementById(wrapId);
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                const isOpen = panel.style.display === 'flex';
+                document.querySelectorAll('#audioMenuPanel, #moreMenuPanel').forEach(p => p.style.display = '');
+                panel.style.display = isOpen ? '' : 'flex';
+            };
+            panel.querySelectorAll('button').forEach(b => {
+                b.addEventListener('click', () => {
+                    if (window.innerWidth >= 768) panel.style.display = '';
+                });
+            });
+            document.addEventListener('click', (e) => {
+                if (window.innerWidth >= 768 && panel.style.display === 'flex' && !wrapper.contains(e.target)) {
+                    panel.style.display = '';
                 }
             });
-        });
-
-        document.addEventListener('click', (e) => {
-            const wrapper = document.getElementById('moreMenuWrapper');
-            if (window.innerWidth >= 768 && moreMenuPanel.style.display === 'flex' && !wrapper.contains(e.target)) {
-                moreMenuPanel.style.display = '';
-            }
         });
 
         // --- Auth & Firestore ---
@@ -2716,43 +2850,59 @@
             document.getElementById('importFile').click();
         };
 
-        async function loadPublishedTourIntoEditor(url, title) {
+        async function fetchTourHtmlContent(url) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("HTTP " + response.status);
+                return await response.text();
+            } catch (err) {
+                console.warn("Direct fetch failed, trying CORS proxy fallback:", err);
+            }
+            const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+            const proxyResponse = await fetch(proxyUrl);
+            if (!proxyResponse.ok) throw new Error("Proxy HTTP " + proxyResponse.status);
+            return await proxyResponse.text();
+        }
+
+        async function loadPublishedTourIntoEditor(url, title, storagePath, publishId) {
             setStatus("Loading \"" + title + "\" into the editor...", "info");
             document.getElementById('publishedToursModal').classList.add('hidden');
 
             try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error("HTTP " + response.status);
-                const content = await response.text();
+                const content = await fetchTourHtmlContent(url);
                 if (loadTourFromHtmlString(content)) {
-                    setStatus("Loaded \"" + title + "\" into the editor. Publishing again will create a new link — the old one keeps working until you delete it.", "success");
+                    if (storagePath && publishId) {
+                        loadedFromPublishInfo = { storagePath, publishId, title };
+                        setStatus("Loaded \"" + title + "\" into the editor. When you're ready, Publish will offer to update this same tour instead of creating a new link.", "success");
+                    } else {
+                        setStatus("Loaded \"" + title + "\" into the editor. Publishing again will create a new link — the old one keeps working until you delete it.", "success");
+                    }
                 }
-                return;
             } catch (err) {
-                console.warn("Direct fetch failed, trying CORS proxy fallback:", err);
-            }
-
-            // Same fallback pattern already used for scene image loading in exported tours.
-            try {
-                const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
-                const proxyResponse = await fetch(proxyUrl);
-                if (!proxyResponse.ok) throw new Error("Proxy HTTP " + proxyResponse.status);
-                const content = await proxyResponse.text();
-                if (loadTourFromHtmlString(content)) {
-                    setStatus("Loaded \"" + title + "\" into the editor. Publishing again will create a new link — the old one keeps working until you delete it.", "success");
-                }
-            } catch (proxyErr) {
-                console.error("Proxy fetch also failed:", proxyErr);
+                console.error("Load Published Tour Error:", err);
                 setStatus("Couldn't load this tour into the editor (network/CORS issue). Try 'Open Link' then save the page and use Import instead.", "error");
             }
         }
 
+        function parseTourStructureReadOnly(content) {
+            const scenesMatch = content.match(/const scenes = (\[.*\]);/);
+            if (!scenesMatch || !scenesMatch[1]) return null;
+            try {
+                return JSON.parse(scenesMatch[1]);
+            } catch (err) {
+                console.error("Parse Tour Structure Error:", err);
+                return null;
+            }
+        }
+
         function loadTourFromHtmlString(content) {
+            loadedFromPublishInfo = null; // Reset by default — callers that DO know the publish origin re-set this after a successful load.
             try {
                 const scenesMatch = content.match(/const scenes = (\[.*\]);/);
                 const introMatch = content.match(/const tourIntro = (\{.*\});/);
                 const timerMatch = content.match(/const tourTimer = (\d+);/);
                 const completionModeMatch = content.match(/const tourCompletionMode = "(\w+)";/);
+                const cyoaModeMatch = content.match(/const tourCYOAMode = (true|false);/);
 
                 if (scenesMatch && scenesMatch[1]) {
                     scenes = JSON.parse(scenesMatch[1]);
@@ -2770,6 +2920,7 @@
                     }
 
                     tourCompletionMode = (completionModeMatch && completionModeMatch[1] === 'any') ? 'any' : 'all';
+                    tourCYOAMode = !!(cyoaModeMatch && cyoaModeMatch[1] === 'true');
 
                     // Reset editor state
                     activeSceneId = null;
@@ -2791,6 +2942,139 @@
                 return false;
             }
         }
+
+        // --- Manage Leaderboard (teacher-side view of a published tour's submissions) ---
+
+        async function openManageLeaderboardModal(url, title, publishId) {
+            const modal = document.getElementById('manageLeaderboardModal');
+            const loadingEl = document.getElementById('manageLeaderboardLoading');
+            const emptyEl = document.getElementById('manageLeaderboardEmpty');
+            const errorEl = document.getElementById('manageLeaderboardError');
+            const listSection = document.getElementById('manageLeaderboardListSection');
+            const mapSection = document.getElementById('manageLeaderboardMapSection');
+            const listContainer = document.getElementById('manageLeaderboardListContainer');
+
+            document.getElementById('manageLeaderboardTitle').textContent = '🏆 Leaderboard — ' + title;
+            loadingEl.classList.remove('hidden');
+            emptyEl.classList.add('hidden');
+            errorEl.classList.add('hidden');
+            listSection.classList.add('hidden');
+            mapSection.classList.add('hidden');
+            listContainer.innerHTML = '';
+            modal.classList.remove('hidden');
+
+            let structureScenes = null;
+            try {
+                const content = await fetchTourHtmlContent(url);
+                structureScenes = parseTourStructureReadOnly(content);
+            } catch (err) {
+                console.error('Fetch tour structure error:', err);
+            }
+
+            try {
+                const snap = await getDocs(collection(db, 'leaderboards', publishId, 'entries'));
+                loadingEl.classList.add('hidden');
+
+                if (snap.empty) {
+                    emptyEl.classList.remove('hidden');
+                    return;
+                }
+
+                const entries = [];
+                snap.forEach(d => entries.push({ id: d.id, ...d.data() }));
+                entries.sort((a, b) => {
+                    if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+                    return a.timeSeconds - b.timeSeconds;
+                });
+
+                listSection.classList.remove('hidden');
+                entries.forEach((entry, i) => {
+                    const mins = Math.floor((entry.timeSeconds || 0) / 60);
+                    const secs = (entry.timeSeconds || 0) % 60;
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center justify-between bg-stone-700 rounded-lg px-4 py-3';
+
+                    const left = document.createElement('div');
+                    left.className = 'flex items-center gap-3';
+                    left.innerHTML = '<span class="text-stone-400 font-bold w-6">' + (i + 1) + '</span><span class="text-white font-medium">' + (entry.name || 'Anonymous') + '</span>';
+
+                    const right = document.createElement('div');
+                    right.className = 'flex items-center gap-4 text-sm';
+                    right.innerHTML = '<span class="text-emerald-400 font-bold">' + entry.accuracy + '%</span><span class="text-stone-300">' + mins + ':' + secs.toString().padStart(2, '0') + '</span>';
+
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'text-red-400 hover:text-red-300 p-1';
+                    delBtn.title = 'Remove this entry';
+                    delBtn.innerHTML = '✕';
+                    delBtn.onclick = () => {
+                        customConfirm('Remove "' + (entry.name || 'Anonymous') + '" from the leaderboard?', async (confirmed) => {
+                            if (!confirmed) return;
+                            try {
+                                await deleteDoc(doc(db, 'leaderboards', publishId, 'entries', entry.id));
+                                openManageLeaderboardModal(url, title, publishId);
+                            } catch (err) {
+                                console.error('Delete leaderboard entry error:', err);
+                                setStatus("Couldn't remove entry: " + err.message, "error");
+                            }
+                        });
+                    };
+                    right.appendChild(delBtn);
+
+                    row.appendChild(left);
+                    row.appendChild(right);
+                    listContainer.appendChild(row);
+                });
+
+                if (structureScenes && structureScenes.some(s => s.hotspots.filter(h => h.targetSceneId).length >= 2)) {
+                    mapSection.classList.remove('hidden');
+                    renderManageLeaderboardMap(structureScenes, entries);
+                }
+            } catch (err) {
+                console.error('Load leaderboard error:', err);
+                loadingEl.classList.add('hidden');
+                errorEl.textContent = "Couldn't load the leaderboard: " + err.message;
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        function renderManageLeaderboardMap(structureScenes, entries) {
+            const cont = document.getElementById('manageLeaderboardMapContainer');
+            cont.innerHTML = '';
+
+            const totalEntries = entries.length;
+            const decisionScenes = structureScenes.filter(s => s.hotspots.filter(h => h.targetSceneId).length >= 2);
+
+            decisionScenes.forEach(s => {
+                const card = document.createElement('div');
+                card.className = 'bg-stone-800 border border-stone-700 rounded-lg p-4';
+
+                const heading = document.createElement('p');
+                heading.className = 'text-white font-bold mb-3 flex items-center gap-1.5';
+                heading.innerHTML = '🔀 ' + s.title;
+                card.appendChild(heading);
+
+                const choices = s.hotspots.filter(h => h.targetSceneId).map(h => {
+                    const target = structureScenes.find(sc => sc.id === h.targetSceneId);
+                    const count = entries.filter(e => e.pathChoices && e.pathChoices[s.id] && e.pathChoices[s.id].includes(h.targetSceneId)).length;
+                    const pct = totalEntries > 0 ? Math.round((count / totalEntries) * 100) : 0;
+                    return { title: target ? target.title : 'Unknown scene', pct, count };
+                }).sort((a, b) => b.pct - a.pct);
+
+                choices.forEach(choice => {
+                    const row = document.createElement('div');
+                    row.className = 'mb-2.5 last:mb-0';
+                    row.innerHTML = '<div class="flex justify-between text-sm text-stone-300 mb-1"><span class="truncate pr-2">\u2192 ' + choice.title + '</span><span class="flex-shrink-0 font-bold text-teal-400">' + choice.pct + '% <span class="text-stone-500 font-normal">(' + choice.count + ')</span></span></div>' +
+                        '<div class="w-full bg-stone-700 rounded-full h-2.5"><div class="bg-teal-500 h-2.5 rounded-full transition-all" style="width:' + choice.pct + '%"></div></div>';
+                    card.appendChild(row);
+                });
+
+                cont.appendChild(card);
+            });
+        }
+
+        document.getElementById('closeManageLeaderboardBtn').onclick = () => {
+            document.getElementById('manageLeaderboardModal').classList.add('hidden');
+        };
 
         document.getElementById('importFile').onchange = (e) => {
             const file = e.target.files[0];
@@ -3027,10 +3311,30 @@
             updateCompletionModeButtons();
         };
 
+        function updateCYOAModeButtons() {
+            const offBtn = document.getElementById('cyoaModeOffBtn');
+            const onBtn = document.getElementById('cyoaModeOnBtn');
+            const active = 'bg-teal-700 text-white';
+            const inactive = 'bg-white text-stone-600 hover:bg-stone-50';
+            offBtn.className = 'flex-1 px-3 py-2 transition-colors ' + (!pendingCYOAMode ? active : inactive);
+            onBtn.className = 'flex-1 px-3 py-2 transition-colors border-l border-stone-300 ' + (pendingCYOAMode ? active : inactive);
+        }
+
+        document.getElementById('cyoaModeOffBtn').onclick = () => {
+            pendingCYOAMode = false;
+            updateCYOAModeButtons();
+        };
+        document.getElementById('cyoaModeOnBtn').onclick = () => {
+            pendingCYOAMode = true;
+            updateCYOAModeButtons();
+        };
+
         document.getElementById('setupTourBtn').onclick = () => {
             document.getElementById('tourTimerInput').value = tourTimer || '';
             pendingCompletionMode = tourCompletionMode;
             updateCompletionModeButtons();
+            pendingCYOAMode = tourCYOAMode;
+            updateCYOAModeButtons();
             document.getElementById('tourSettingsModal').classList.remove('hidden');
         };
 
@@ -3038,8 +3342,10 @@
             const val = parseInt(document.getElementById('tourTimerInput').value, 10);
             tourTimer = isNaN(val) || val < 0 ? 0 : val;
             tourCompletionMode = pendingCompletionMode;
+            tourCYOAMode = pendingCYOAMode;
             document.getElementById('tourSettingsModal').classList.add('hidden');
-            setStatus("Tour settings saved. " + (tourTimer > 0 ? "Timer set to " + tourTimer + " mins. " : "Timer disabled. ") + (tourCompletionMode === 'any' ? "Ends on any one path." : "Requires all paths."), "success");
+            setStatus("Tour settings saved. " + (tourTimer > 0 ? "Timer set to " + tourTimer + " mins. " : "Timer disabled. ") + (tourCompletionMode === 'any' ? "Ends on any one path. " : "Requires all paths. ") + (tourCYOAMode ? "CYOA Mode is on." : "CYOA Mode is off."), "success");
+            if (!isEditMode) switchScene(activeSceneId); // Re-render Preview Mode's scene list immediately if CYOA Mode changed while testing.
         };
 
         document.getElementById('closeSettingsBtn').onclick = () => {
@@ -3296,7 +3602,13 @@
         function closeBuilderMap() {
             const m = document.getElementById('mapModal');
             m.classList.add('opacity-0');
-            setTimeout(() => m.classList.add('hidden'), 300);
+            setTimeout(() => {
+                m.classList.add('hidden');
+                if (!isEditMode && builderTourCompleted) {
+                    const over = document.getElementById('builderCompleteOverlay');
+                    over.classList.remove('hidden', 'opacity-0');
+                }
+            }, 300);
         }
 
         document.getElementById('openBuilderMapBtn').onclick = () => {
@@ -3324,7 +3636,7 @@
         document.getElementById('exportBtn').onclick = () => checkTourReadyThen(performExport);
         document.getElementById('publishBtn').onclick = () => checkTourReadyThen(performPublish);
 
-        function generateTourHtml() {
+        function generateTourHtml(publishId, ownerUid) {
                 const exportScenes = scenes.map(s => {
                     const { localImageSrc, localAudioSrc, ...rest } = s;
                     return rest;
@@ -3433,11 +3745,47 @@
                     "            <div class=\"bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl\">🏆</div>",
                     "            <h2 class=\"text-3xl font-bold text-slate-800 mb-3\">Journey Complete!</h2>",
                     "            <p id=\"completionTimeText\" class=\"text-slate-600 mb-8 font-medium text-lg\"></p>",
-                    "            <div class=\"bg-amber-50 rounded-xl p-4 mb-6 border border-amber-200 text-amber-800\">",
+                    "            <div id=\"completeMapUnlockNotice\" class=\"bg-amber-50 rounded-xl p-4 mb-6 border border-amber-200 text-amber-800\">",
                     "                <p class=\"font-bold mb-1\">🗺️ Fast Travel Unlocked!</p>",
                     "                <p class=\"text-sm\">You can now use the Map to instantly travel to any location, and all hidden clues are now fully visible.</p>",
                     "            </div>",
-                    "            <button onclick=\"document.getElementById('completeOverlay').classList.add('hidden'); openMap();\" class=\"bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg w-full\">Open Map</button>",
+                    "            <p id=\"cyoaSubmitFirstNotice\" class=\"hidden text-sm text-slate-500 mb-4\">This tour plays as a Choose Your Own Adventure \u2014 submit your results first to unlock the map, leaderboard, and the option to restart and try different choices.</p>",
+                    "            <button id=\"completeOpenMapBtn\" class=\"bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg w-full mb-3\">Open Map</button>",
+                    "            <div id=\"leaderboardActionsContainer\" class=\"hidden flex gap-3\">",
+                    "                <button id=\"submitResultsBtn\" class=\"flex-1 bg-white border-2 border-emerald-500 text-emerald-700 hover:bg-emerald-50 font-bold py-2.5 px-4 rounded-xl transition-colors\">Submit My Results</button>",
+                    "                <button id=\"viewLeaderboardBtn\" class=\"flex-1 bg-white border-2 border-emerald-500 text-emerald-700 hover:bg-emerald-50 font-bold py-2.5 px-4 rounded-xl transition-colors\">View Leaderboard</button>",
+                    "            </div>",
+                    "            <button id=\"restartJourneyBtn\" class=\"hidden mt-3 w-full bg-white border-2 border-slate-300 text-slate-600 hover:bg-slate-50 font-bold py-2.5 px-4 rounded-xl transition-colors\">\u21bb Restart Journey</button>",
+                    "        </div>",
+                    "    </div>",
+                    "    <div id=\"submitNameModal\" class=\"fixed inset-0 bg-slate-900/90 hidden z-[10100] flex items-center justify-center p-4\">",
+                    "        <div class=\"bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full\">",
+                    "            <h3 class=\"text-xl font-bold text-slate-800 mb-2\">Submit Your Results</h3>",
+                    "            <p class=\"text-sm text-slate-500 mb-4\">Enter your name to appear on the leaderboard.</p>",
+                    "            <input type=\"text\" id=\"submitNameInput\" maxlength=\"40\" class=\"w-full border border-slate-300 rounded-md p-2.5 mb-2 outline-none focus:ring-2 focus:ring-emerald-500\" placeholder=\"Your name\">",
+                    "            <p id=\"submitNameError\" class=\"text-red-500 text-sm hidden mb-2\">Please enter a name.</p>",
+                    "            <div class=\"flex justify-end gap-3 mt-3\">",
+                    "                <button id=\"cancelSubmitNameBtn\" class=\"px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-md font-medium transition-colors\">Cancel</button>",
+                    "                <button id=\"confirmSubmitNameBtn\" class=\"px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-bold transition-colors\">Submit</button>",
+                    "            </div>",
+                    "        </div>",
+                    "    </div>",
+                    "    <div id=\"leaderboardModal\" class=\"fixed inset-0 bg-slate-900/95 hidden z-[10050] flex flex-col p-6 transition-opacity duration-300 opacity-0\">",
+                    "        <div class=\"flex justify-between items-center mb-4\">",
+                    "            <h2 class=\"text-2xl font-bold text-white\">🏆 Leaderboard</h2>",
+                    "            <button id=\"closeLeaderboardBtn\" class=\"text-slate-300 hover:text-white font-bold text-xl\">✕ Close</button>",
+                    "        </div>",
+                    "        <div id=\"leaderboardContent\" class=\"flex-grow overflow-y-auto bg-slate-800 rounded-xl border border-slate-700 p-6\">",
+                    "            <div id=\"leaderboardLoading\" class=\"text-slate-400 text-center py-10\">Loading results...</div>",
+                    "            <div id=\"leaderboardEmpty\" class=\"hidden text-slate-400 text-center py-10\">No results submitted yet. Be the first!</div>",
+                    "            <div id=\"leaderboardListSection\" class=\"hidden mb-8\">",
+                    "                <h3 class=\"text-slate-300 font-bold uppercase text-xs tracking-wider mb-3\">Rankings</h3>",
+                    "                <div id=\"leaderboardListContainer\" class=\"space-y-2\"></div>",
+                    "            </div>",
+                    "            <div id=\"leaderboardMapSection\" class=\"hidden\">",
+                    "                <h3 class=\"text-slate-300 font-bold uppercase text-xs tracking-wider mb-3\">Decision Points (% of everyone who submitted)</h3>",
+                    "                <div id=\"leaderboardMapContainer\" class=\"max-h-[50vh] overflow-y-auto space-y-3 pr-1\"></div>",
+                    "            </div>",
                     "        </div>",
                     "    </div>",
                     "    <div id=\"fadeOverlay\" class=\"fixed inset-0 bg-slate-950 z-[9999] opacity-0 pointer-events-none transition-opacity duration-500\"></div>",
@@ -3479,7 +3827,7 @@
                     "                <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"28\" height=\"28\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"text-cyan-400\"><polygon points=\"3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21\"></polygon><line x1=\"9\" y1=\"3\" x2=\"9\" y2=\"21\"></line><line x1=\"15\" y1=\"3\" x2=\"15\" y2=\"21\"></line></svg>",
                     "                Fast Travel Map",
                     "            </h2>",
-                    "            <button onclick=\"closeMap()\" class=\"text-slate-300 hover:text-white font-bold text-xl\">✕ Close</button>",
+                    "            <button id=\"closeMapBtn\" class=\"text-slate-300 hover:text-white font-bold text-xl\">✕ Close</button>",
                     "        </div>",
                     "        <div class=\"flex-grow w-full relative bg-slate-800 rounded-xl overflow-auto border border-slate-700 p-8 flex flex-wrap gap-12 items-center justify-center content-center\" id=\"mapNodesContainer\">",
                     "            <svg id=\"mapLines\" class=\"absolute inset-0 w-full h-full pointer-events-none\">",
@@ -3500,7 +3848,7 @@
                     "        <div id=\"mapPathStatus\" class=\"hidden mt-5 pt-5 border-t border-slate-700 text-center\"></div>",
                     "    </div>",
                     "    <div id=\"popup\" class=\"absolute -translate-x-1/2 bg-white p-6 rounded-xl shadow-2xl hidden w-[90vw] max-w-lg z-[200]\">",
-                    "        <button onclick=\"closeP()\" class=\"absolute top-3 right-3 text-slate-400 hover:text-slate-600 text-xl font-bold z-10\">✕</button>",
+                    "        <button id=\"closePopupBtn\" class=\"absolute top-3 right-3 text-slate-400 hover:text-slate-600 text-xl font-bold z-10\">✕</button>",
                     "        <h2 id=\"pTitle\" class=\"font-bold text-2xl mb-3\"></h2>",
                     "        <div id=\"pImgContainer\" class=\"relative hidden mb-4 group cursor-zoom-in\">",
                     "            <img id=\"pImg\" class=\"w-full h-auto max-h-48 object-cover rounded-md shadow-sm\">",
@@ -3534,11 +3882,27 @@
                     "            <div class=\"flex justify-end gap-3 mt-4\"><button onclick=\"document.getElementById('quiz').classList.add('hidden')\" class=\"text-slate-500\">Cancel</button><button id=\"qSub\" class=\"bg-purple-600 text-white px-6 py-2 rounded-md font-bold\">Submit</button></div>",
                     "        </div>",
                     "    </div>",
-                    "    <script>",
+                    "    <script type=\"module\">",
+                    "        import { initializeApp } from \"https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js\";",
+                    "        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from \"https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js\";",
+                    "        const firebaseConfig = {",
+                    "            apiKey: \"AIzaSyAdPMFxcptu9QEng_poGGm9YteFUO8UYt4\",",
+                    "            authDomain: \"virtuallearningjourney.firebaseapp.com\",",
+                    "            projectId: \"virtuallearningjourney\",",
+                    "            storageBucket: \"virtuallearningjourney.firebasestorage.app\",",
+                    "            messagingSenderId: \"47112823271\",",
+                    "            appId: \"1:47112823271:web:fa1906f15a6e1ac8221d42\"",
+                    "        };",
+                    "        const fbApp = initializeApp(firebaseConfig);",
+                    "        const db = getFirestore(fbApp);",
                     "        const scenes = " + JSON.stringify(exportScenes) + ";",
                     "        const tourIntro = " + JSON.stringify(tourIntro) + ";",
                     "        const tourTimer = " + tourTimer + ";",
                     "        const tourCompletionMode = " + JSON.stringify(tourCompletionMode) + ";",
+                    "        const tourCYOAMode = " + (tourCYOAMode ? 'true' : 'false') + ";",
+                    "        let cyoaSubmitted = false;",
+                    "        const publishId = " + JSON.stringify(publishId || null) + ";",
+                    "        const ownerUid = " + JSON.stringify(ownerUid || null) + ";",
                     "        let cur = 0, lon = 0, lat = 0;",
                     "        let unlocked = new Set([0]);",
                     "        function unlockScene(i) {",
@@ -3551,6 +3915,9 @@
                     "        function isUnlocked(i) { return (tourCompleted && isTourFullyComplete()) || unlocked.has(i); }",
                     "        let scene, camera, renderer, sphere;",
                     "        let vis = {};",
+                    "        let pathChoiceLog = {};",
+                    "        let lastAccuracy = 100;",
+                    "        let lastElapsedSeconds = 0;",
                     "        let activeP = null;",
                     "        let activePointQuizIndex = null;",
                     "        let activePointQuizHs = null;",
@@ -3668,12 +4035,15 @@
                     "                }",
                     "                let acc = totalClicks > 0 ? Math.round((totalRequired / totalClicks) * 100) : 100;",
                     "                if (acc > 100) acc = 100;",
+                    "                lastAccuracy = acc;",
+                    "                lastElapsedSeconds = totalSecs;",
                     "                document.getElementById('accuracyText').textContent = acc + '%';",
                     "                document.getElementById('accuracyContainer').classList.remove('hidden');",
                     "                const td = document.getElementById('timerDisplay');",
                     "                td.classList.remove('hidden');",
                     "                td.classList.add('bg-emerald-600', 'border-emerald-500', 'border-2');",
                     "                td.classList.remove('bg-slate-900/80');",
+                    "                if (publishId) document.getElementById('leaderboardActionsContainer').classList.remove('hidden');",
                     "                scenes[cur].hotspots.forEach((h, i) => {",
                     "                    const div = document.getElementById('h'+i);",
                     "                    if (div) {",
@@ -3697,20 +4067,27 @@
                     "                ? \"You finished with \" + document.getElementById('timeText').textContent + \" remaining!\"",
                     "                : \"You completed the journey in \" + mins + \"m \" + secs + \"s!\";",
                     "            document.getElementById('completionTimeText').textContent = timeString;",
-                    "            const btn = document.getElementById('openMapMenuBtn');",
-                    "            if (btn) {",
-                    "                btn.innerHTML = '🗺️ Fast Travel Map';",
-                    "                btn.className = 'w-full text-left p-2 rounded bg-amber-100 font-bold text-amber-800 hover:bg-amber-200 mt-2 transition-colors';",
-                    "                btn.onclick = () => {",
-                    "                    const pnl = document.getElementById('menuPanel');",
-                    "                    if(pnl) pnl.classList.add('hidden');",
-                    "                    openMap();",
-                    "                };",
-                    "            }",
-                    "            if (isTourFullyComplete()) {",
-                    "                scenes.forEach((s, i) => unlockScene(i));",
+                    "            const cyoaGated = tourCYOAMode && !cyoaSubmitted;",
+                    "            if (!cyoaGated) {",
+                    "                const btn = document.getElementById('openMapMenuBtn');",
+                    "                if (btn) {",
+                    "                    btn.innerHTML = '🗺️ Fast Travel Map';",
+                    "                    btn.className = 'w-full text-left p-2 rounded bg-amber-100 font-bold text-amber-800 hover:bg-amber-200 mt-2 transition-colors';",
+                    "                    btn.onclick = () => {",
+                    "                        const pnl = document.getElementById('menuPanel');",
+                    "                        if(pnl) pnl.classList.add('hidden');",
+                    "                        openMap();",
+                    "                    };",
+                    "                }",
+                    "                if (isTourFullyComplete()) {",
+                    "                    scenes.forEach((s, i) => unlockScene(i));",
+                    "                }",
                     "            }",
                     "            renderMenu();",
+                    "            document.getElementById('completeMapUnlockNotice').classList.toggle('hidden', cyoaGated);",
+                    "            document.getElementById('cyoaSubmitFirstNotice').classList.toggle('hidden', !cyoaGated);",
+                    "            document.getElementById('completeOpenMapBtn').classList.toggle('hidden', cyoaGated);",
+                    "            document.getElementById('viewLeaderboardBtn').classList.toggle('hidden', cyoaGated);",
                     "            const over = document.getElementById('completeOverlay');",
                     "            if (over) {",
                     "                over.classList.remove('hidden');",
@@ -3970,6 +4347,7 @@
                     "            renderMenu();",
                     "            updateHud();",
                     "            refreshProgressGates(); ",
+                    "            checkCompletion(); // A scene with no hotspots (a bare ending) can still complete the tour just by being reached.",
                     "        }",
                     "        function processHotspotDiscovery(hs, idx) {",
                     "            if (!tourCompleted) totalClicks++; ",
@@ -4048,6 +4426,11 @@
                     "                    tBtn.textContent = 'Travel to: ' + scenes[targetIdx].title;",
                     "                    tBtn.classList.remove('hidden');",
                     "                    tBtn.onclick = () => {",
+                    "                        if (scenes[cur] && scenes[cur].hotspots.filter(hh => hh.targetSceneId).length >= 2) {",
+                    "                            const hubId = scenes[cur].id;",
+                    "                            if (!pathChoiceLog[hubId]) pathChoiceLog[hubId] = new Set();",
+                    "                            pathChoiceLog[hubId].add(h.targetSceneId);",
+                    "                        }",
                     "                        closeP();",
                     "                        const fade = document.getElementById('fadeOverlay');",
                     "                        fade.classList.remove('opacity-0', 'pointer-events-none');",
@@ -4214,10 +4597,34 @@
                     "        function closeMap() {",
                     "            const m = document.getElementById('mapModal');",
                     "            m.classList.add('opacity-0');",
-                    "            setTimeout(() => m.classList.add('hidden'), 300);",
+                    "            setTimeout(() => {",
+                    "                m.classList.add('hidden');",
+                    "                if (tourCompleted) {",
+                    "                    const over = document.getElementById('completeOverlay');",
+                    "                    over.classList.remove('hidden');",
+                    "                    setTimeout(() => over.classList.remove('opacity-0'), 50);",
+                    "                }",
+                    "            }, 300);",
                     "        }",
+                    "        document.getElementById('closeMapBtn').onclick = closeMap;",
+                    "        document.getElementById('closePopupBtn').onclick = closeP;",
+                    "        document.getElementById('completeOpenMapBtn').onclick = () => {",
+                    "            document.getElementById('completeOverlay').classList.add('hidden');",
+                    "            openMap();",
+                    "        };",
                     "        function renderMenu() {",
                     "            const links = document.getElementById('sceneLinks'); links.innerHTML = '';",
+                    "            if (tourCYOAMode && !cyoaSubmitted) {",
+                    "                Object.keys(vis).map(k => parseInt(k, 10)).sort((a, b) => a - b).forEach(i => {",
+                    "                    const s = scenes[i];",
+                    "                    if (!s) return;",
+                    "                    const row = document.createElement('div');",
+                    "                    row.className = 'w-full text-left p-2 rounded ' + (i === cur ? 'bg-indigo-50 font-bold text-indigo-900' : 'text-slate-500');",
+                    "                    row.textContent = (i + 1) + '. ' + s.title;",
+                    "                    links.appendChild(row);",
+                    "                });",
+                    "                return;",
+                    "            }",
                     "            const fullyDone = tourCompleted && isTourFullyComplete();",
                     "            // Branch lock: once the visitor reaches a Branch Hub scene, hide every scene",
                     "            // positioned before it so they can't backtrack out of the branch via the menu.",
@@ -4324,6 +4731,143 @@
                     "                    p.style.visibility = 'hidden';",
                     "                }",
                     "            }",
+                    "        }",
+                    "        // --- Leaderboard ---",
+                    "        document.getElementById('submitResultsBtn').onclick = () => {",
+                    "            document.getElementById('submitNameInput').value = '';",
+                    "            document.getElementById('submitNameError').classList.add('hidden');",
+                    "            document.getElementById('submitNameModal').classList.remove('hidden');",
+                    "        };",
+                    "        document.getElementById('cancelSubmitNameBtn').onclick = () => {",
+                    "            document.getElementById('submitNameModal').classList.add('hidden');",
+                    "        };",
+                    "        document.getElementById('confirmSubmitNameBtn').onclick = async () => {",
+                    "            const name = document.getElementById('submitNameInput').value.trim();",
+                    "            if (!name) {",
+                    "                document.getElementById('submitNameError').textContent = 'Please enter a name.';",
+                    "                document.getElementById('submitNameError').classList.remove('hidden');",
+                    "                return;",
+                    "            }",
+                    "            const btn = document.getElementById('confirmSubmitNameBtn');",
+                    "            btn.disabled = true;",
+                    "            btn.textContent = 'Submitting...';",
+                    "            const pathChoicesSerializable = {};",
+                    "            Object.keys(pathChoiceLog).forEach(hubId => { pathChoicesSerializable[hubId] = Array.from(pathChoiceLog[hubId]); });",
+                    "            try {",
+                    "                await addDoc(collection(db, 'leaderboards', publishId, 'entries'), {",
+                    "                    ownerUid: ownerUid,",
+                    "                    name: name,",
+                    "                    accuracy: lastAccuracy,",
+                    "                    timeSeconds: lastElapsedSeconds,",
+                    "                    submittedAt: Date.now(),",
+                    "                    pathChoices: pathChoicesSerializable",
+                    "                });",
+                    "                document.getElementById('submitNameModal').classList.add('hidden');",
+                    "                document.getElementById('submitResultsBtn').textContent = 'Submitted!';",
+                    "                document.getElementById('submitResultsBtn').disabled = true;",
+                    "                if (tourCYOAMode) {",
+                    "                    cyoaSubmitted = true;",
+                    "                    document.getElementById('completeOpenMapBtn').classList.remove('hidden');",
+                    "                    document.getElementById('viewLeaderboardBtn').classList.remove('hidden');",
+                    "                    document.getElementById('completeMapUnlockNotice').classList.remove('hidden');",
+                    "                    document.getElementById('cyoaSubmitFirstNotice').classList.add('hidden');",
+                    "                    document.getElementById('restartJourneyBtn').classList.remove('hidden');",
+                    "                    const menuBtn = document.getElementById('openMapMenuBtn');",
+                    "                    if (menuBtn) {",
+                    "                        menuBtn.innerHTML = '🗺️ Fast Travel Map';",
+                    "                        menuBtn.className = 'w-full text-left p-2 rounded bg-amber-100 font-bold text-amber-800 hover:bg-amber-200 mt-2 transition-colors';",
+                    "                        menuBtn.onclick = () => {",
+                    "                            const pnl = document.getElementById('menuPanel');",
+                    "                            if (pnl) pnl.classList.add('hidden');",
+                    "                            openMap();",
+                    "                        };",
+                    "                    }",
+                    "                    if (isTourFullyComplete()) { scenes.forEach((s, i) => unlockScene(i)); }",
+                    "                    renderMenu();",
+                    "                }",
+                    "            } catch (err) {",
+                    "                console.error('Submit leaderboard error:', err);",
+                    "                document.getElementById('submitNameError').textContent = \"Couldn't submit \u2014 check your connection and try again.\";",
+                    "                document.getElementById('submitNameError').classList.remove('hidden');",
+                    "            } finally {",
+                    "                btn.disabled = false;",
+                    "                btn.textContent = 'Submit';",
+                    "            }",
+                    "        };",
+                    "        document.getElementById('restartJourneyBtn').onclick = () => location.reload();",
+                    "        document.getElementById('closeLeaderboardBtn').onclick = () => {",
+                    "            const m = document.getElementById('leaderboardModal');",
+                    "            m.classList.add('opacity-0');",
+                    "            setTimeout(() => m.classList.add('hidden'), 300);",
+                    "        };",
+                    "        document.getElementById('viewLeaderboardBtn').onclick = async () => {",
+                    "            const m = document.getElementById('leaderboardModal');",
+                    "            m.classList.remove('hidden');",
+                    "            setTimeout(() => m.classList.remove('opacity-0'), 10);",
+                    "            const loadingEl = document.getElementById('leaderboardLoading');",
+                    "            const emptyEl = document.getElementById('leaderboardEmpty');",
+                    "            const listSection = document.getElementById('leaderboardListSection');",
+                    "            const mapSection = document.getElementById('leaderboardMapSection');",
+                    "            const listContainer = document.getElementById('leaderboardListContainer');",
+                    "            loadingEl.classList.remove('hidden');",
+                    "            emptyEl.classList.add('hidden');",
+                    "            listSection.classList.add('hidden');",
+                    "            mapSection.classList.add('hidden');",
+                    "            listContainer.innerHTML = '';",
+                    "            try {",
+                    "                const snap = await getDocs(collection(db, 'leaderboards', publishId, 'entries'));",
+                    "                loadingEl.classList.add('hidden');",
+                    "                if (snap.empty) { emptyEl.classList.remove('hidden'); return; }",
+                    "                const entries = [];",
+                    "                snap.forEach(d => entries.push(d.data()));",
+                    "                entries.sort((a, b) => { if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy; return a.timeSeconds - b.timeSeconds; });",
+                    "                listSection.classList.remove('hidden');",
+                    "                entries.forEach((entry, i) => {",
+                    "                    const mins = Math.floor(entry.timeSeconds / 60);",
+                    "                    const secs = entry.timeSeconds % 60;",
+                    "                    const row = document.createElement('div');",
+                    "                    row.className = 'flex items-center justify-between bg-slate-700 rounded-lg px-4 py-3';",
+                    "                    row.innerHTML = '<div class=\"flex items-center gap-3\"><span class=\"text-slate-400 font-bold w-6\">' + (i + 1) + '</span><span class=\"text-white font-medium\">' + (entry.name || 'Anonymous') + '</span></div><div class=\"flex items-center gap-4 text-sm\"><span class=\"text-emerald-400 font-bold\">' + entry.accuracy + '%</span><span class=\"text-slate-300\">' + mins + ':' + secs.toString().padStart(2, '0') + '</span></div>';",
+                    "                    listContainer.appendChild(row);",
+                    "                });",
+                    "                if (scenes.some(s => s.hotspots.filter(h => h.targetSceneId).length >= 2)) {",
+                    "                    mapSection.classList.remove('hidden');",
+                    "                    renderLeaderboardMap(entries);",
+                    "                }",
+                    "            } catch (err) {",
+                    "                console.error('Load leaderboard error:', err);",
+                    "                loadingEl.classList.add('hidden');",
+                    "                emptyEl.textContent = \"Couldn't load the leaderboard. Check your connection.\";",
+                    "                emptyEl.classList.remove('hidden');",
+                    "            }",
+                    "        };",
+                    "        function renderLeaderboardMap(entries) {",
+                    "            const cont = document.getElementById('leaderboardMapContainer');",
+                    "            cont.innerHTML = '';",
+                    "            const totalEntries = entries.length;",
+                    "            const decisionScenes = scenes.filter(s => s.hotspots.filter(h => h.targetSceneId).length >= 2);",
+                    "            decisionScenes.forEach(s => {",
+                    "                const card = document.createElement('div');",
+                    "                card.className = 'bg-slate-800 border border-slate-700 rounded-lg p-4';",
+                    "                const heading = document.createElement('p');",
+                    "                heading.className = 'text-white font-bold mb-3 flex items-center gap-1.5';",
+                    "                heading.innerHTML = '\ud83d\udd00 ' + s.title;",
+                    "                card.appendChild(heading);",
+                    "                const choices = s.hotspots.filter(h => h.targetSceneId).map(h => {",
+                    "                    const target = scenes.find(sc => sc.id === h.targetSceneId);",
+                    "                    const count = entries.filter(e => e.pathChoices && e.pathChoices[s.id] && e.pathChoices[s.id].includes(h.targetSceneId)).length;",
+                    "                    const pct = totalEntries > 0 ? Math.round((count / totalEntries) * 100) : 0;",
+                    "                    return { title: target ? target.title : 'Unknown scene', pct, count };",
+                    "                }).sort((a, b) => b.pct - a.pct);",
+                    "                choices.forEach(choice => {",
+                    "                    const row = document.createElement('div');",
+                    "                    row.className = 'mb-2.5 last:mb-0';",
+                    "                    row.innerHTML = '<div class=\"flex justify-between text-sm text-slate-300 mb-1\"><span class=\"truncate pr-2\">\u2192 ' + choice.title + '</span><span class=\"flex-shrink-0 font-bold text-emerald-400\">' + choice.pct + '% <span class=\"text-slate-500 font-normal\">(' + choice.count + ')</span></span></div>' +",
+                    "                        '<div class=\"w-full bg-slate-700 rounded-full h-2.5\"><div class=\"bg-emerald-500 h-2.5 rounded-full transition-all\" style=\"width:' + choice.pct + '%\"></div></div>';",
+                    "                    card.appendChild(row);",
+                    "                });",
+                    "                cont.appendChild(card);",
+                    "            });",
                     "        }",
                     "        init();",
                     "    <" + "/script>",
